@@ -1,5 +1,5 @@
-from fahera.cli.main import FaheraCLI
+from fred.cli.main import CLI
 
 
 if __name__ == "__main__":
-    FaheraCLI.cli_exec()
+    CLI.cli_exec()
