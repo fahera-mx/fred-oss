@@ -1,6 +1,6 @@
 # FREDOSS
 
-This is the open-source baseline python package callend `fred` pacakge by `fred.fahera.mx`(Fahera's Research, Education, and Development Team).
+This is the open-source baseline python package called `fred` package by `fred.fahera.mx` (Fahera's Research, Education, and Development Team).
 
 ## Installation
 
