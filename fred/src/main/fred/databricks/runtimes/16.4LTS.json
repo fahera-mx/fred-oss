@@ -1,0 +1,10 @@
+{
+    "python_version": "3.12.3",
+    "databricks_runtime": "16.4 LTS",
+    "libraries": [
+        {
+            "name": "pydantic",
+            "version": "2.8.2"
+        }
+    ]
+}
