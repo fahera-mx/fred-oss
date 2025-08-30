@@ -11,6 +11,6 @@ class DatabricksRuntimeScanner:
             target_url="https://docs.databricks.com/aws/en/release-notes/runtime/"
         )
 
-    def get_payload(self) -> dict:
+    def get_payload(self) -> list[dict]:
         # TODO: Extract the runtime table as a json/dict payload
         raise NotImplementedError

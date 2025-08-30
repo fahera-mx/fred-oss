@@ -25,7 +25,7 @@ class DatabricksRuntimeSyncHelper:
             )
         )
 
-    def get_payload(self, runtime: DatabricksRuntimeCatalog) -> dict:
+    def get_payload(self, runtime: DatabricksRuntimeCatalog) -> list[dict]:
         import requests
 
         # Get the runtime content from the official documentation
