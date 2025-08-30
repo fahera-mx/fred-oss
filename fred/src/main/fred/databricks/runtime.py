@@ -42,10 +42,11 @@ class DatabricksRuntimeCatalog(StrEnum):
         return cls[formatted_name]
 
     def get_filepath(self) -> str:
+        filename = f"{self.key.replace(' ', '').replace('.', '_')}.json"
         return os.path.join(
             os.path.dirname(__file__),
             "runtimes",
-            f"{self.value}.json",
+            filename,
         )
     
     def get_configuration(self) -> dict:
