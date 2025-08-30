@@ -8,7 +8,7 @@ This is the open-source baseline python package called `fred` package by `fred.f
 $ pip install fred-oss
 ```
 
-Be default, the `fredd-oss` package will only install the `default` dependencies. You can control which
+By default, the `fred-oss` package will only install the `default` dependencies. You can control which
 dependency set to use via the 'dependency tags' via the following pattern:
 
 ```
