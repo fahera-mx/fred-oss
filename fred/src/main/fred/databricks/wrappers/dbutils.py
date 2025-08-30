@@ -27,7 +27,7 @@ class DBUtilsRetrievalMethod:
 
 
 @dataclass(frozen=False, slots=True)
-class DBUitlsFinder:
+class DBUtilsFinder:
     instance: Optional[Any] = None
 
     
@@ -137,7 +137,7 @@ class DBUtilsWrapper:
         start_with_index: int = 0,
     ) -> 'DBUtilsWrapper':
         return cls(
-            instance=DBUitlsFinder.find_dbutils(
+            instance=DBUtilsFinder.find_dbutils(
                 spark=spark,
                 client=client,
                 start_with_index=start_with_index,
