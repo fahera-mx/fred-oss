@@ -139,4 +139,4 @@ class LoggerManager:
 logger_manager = LoggerManager.singleton()
 
 if "openrouter" in FRD_OPENAI_BASE_URL and not FRD_OPENAI_DEFAULT_MODEL.endswith(":free"):
-    logger_manager.warning("Using OpenRouter with a non-free model.")
+    logger_manager.get_logger(__name__).warning("Using OpenRouter with a non-free model.")
