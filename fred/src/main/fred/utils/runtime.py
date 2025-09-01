@@ -53,8 +53,8 @@ class RuntimeInfo:
             ],
         )
     
-    def take_profiling_snapshot(self) -> 'RuntimeInfo':
-        return self.profiling_snapshots.append(
+    def append_profiling_snapshot(self):
+        self.profiling_snapshots.append(
             RuntimeProfilingSnapshot.auto()
         )
 
