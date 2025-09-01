@@ -39,7 +39,7 @@ class RuntimeInfo:
 
 
     @classmethod
-    def auto(cls, explude_initial_profile: bool = False) -> 'RuntimeInfo':
+    def auto(cls, exclude_initial_profile: bool = False) -> 'RuntimeInfo':
         import platform
 
         return cls(
@@ -48,7 +48,7 @@ class RuntimeInfo:
             processor=platform.processor(),
             modules=sorted(cls.get_modules()),
             snapshot_at=dt.datetime.utcnow(),
-            profiling_snaphots=[] if explude_initial_profile else [
+            profiling_snaphots=[] if exclude_initial_profile else [
                 RuntimeProfilingSnapshot.auto()
             ],
         )
