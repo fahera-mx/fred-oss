@@ -35,7 +35,7 @@ class RuntimeInfo:
     platform: str
     processor: str
     modules: list[str]
-    profiling_snaphots: list[RuntimeProfilingSnapshot]
+    profiling_snapshots: list[RuntimeProfilingSnapshot]
 
 
     @classmethod
@@ -48,13 +48,13 @@ class RuntimeInfo:
             processor=platform.processor(),
             modules=sorted(cls.get_modules()),
             snapshot_at=dt.datetime.utcnow(),
-            profiling_snaphots=[] if exclude_initial_profile else [
+            profiling_snapshots=[] if exclude_initial_profile else [
                 RuntimeProfilingSnapshot.auto()
             ],
         )
     
     def take_profiling_snapshot(self) -> 'RuntimeInfo':
-        return self.profiling_snaphots.append(
+        return self.profiling_snapshots.append(
             RuntimeProfilingSnapshot.auto()
         )
 
@@ -75,11 +75,11 @@ class RuntimeInfo:
         ) -> dict:
         payload = asdict(self)
         payload["snapshot_at"] = self.snapshot_at.isoformat()
-        payload["profiling_snaphots"] = [
-            snapshot.to_dict() for snapshot in self.profiling_snaphots
+        payload["profiling_snapshots"] = [
+            snapshot.to_dict() for snapshot in self.profiling_snapshots
         ]
         if exclude_modules:
             payload.pop("modules", None)
         if exclude_profiling_snapshots:
-            payload.pop("profiling_snaphots", None)
+            payload.pop("profiling_snapshots", None)
         return payload
