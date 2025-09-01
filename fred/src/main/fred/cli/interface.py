@@ -53,3 +53,7 @@ class AbstractCLI:
 
         with cls.default_config(*args, **kwargs) as cli:
             fire.Fire(cli)
+
+
+class IntegrationExtCLI:
+    pass
