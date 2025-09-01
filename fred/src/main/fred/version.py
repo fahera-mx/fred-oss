@@ -74,4 +74,4 @@ class Version:
             return cls(name=name, value=version_value)
 
 
-version = Version.from_path(name="fahera", dirpath=os.path.dirname(__file__))
+version = Version.from_path(name="fred", dirpath=os.path.dirname(__file__))
