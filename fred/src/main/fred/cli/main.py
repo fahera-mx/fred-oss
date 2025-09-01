@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fred.version import version
 from fred.settings import logger_manager
 from fred.cli.interface import AbstractCLI
@@ -15,6 +13,11 @@ class CLIExtensionGroups:
     def databricks(self):
         from fred.integrations.databricks.cli_ext import DatabricksExt
         return DatabricksExt()
+    
+    @property
+    def runpod(self):
+        from fred.integrations.runpod.cli_ext import RunPodExt
+        return RunPodExt()
 
 
 class CLI(AbstractCLI, CLIExtensionGroups):
