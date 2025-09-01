@@ -19,7 +19,6 @@ class RunPodExt(IntegrationExtCLI):
         handler = self.get_handler_instance(
             import_pattern=import_pattern,
             handler_classname=handler_classname,
-            **kwargs,
         )
         return handler.run(
             event={
@@ -40,7 +39,6 @@ class RunPodExt(IntegrationExtCLI):
         handler = self.get_handler_instance(
             import_pattern=import_pattern,
             handler_classname=handler_classname,
-            **kwargs,
         )
         runpod.serverless.start(
             {
