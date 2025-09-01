@@ -25,6 +25,14 @@ class AbstractCLI:
             enforce=False,
         )
 
+    def runtime(
+            self,
+            include_modules: bool = False,
+        ) -> dict:
+        from fred.utils.runtime import RuntimeInfo
+
+        return RuntimeInfo.auto().to_dict(exclude_modules=not include_modules)
+
     def on_start(self):
         logger.debug("CLI Method not implemented: on_start")
 
