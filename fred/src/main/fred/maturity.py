@@ -40,6 +40,12 @@ class MaturityLevel(enum.Enum):
 
     def is_stable(self) -> bool:
         return self == MaturityLevel.STABLE
+    
+    def is_unstable(self) -> bool:
+        return self in {MaturityLevel.ALPHA, MaturityLevel.BETA, MaturityLevel.TO_BE_DEPRECATED}
+    
+    def is_deprecated(self) -> bool:
+        return self in {MaturityLevel.DEPRECATED, MaturityLevel.REMOVED}
 
 
 @dataclass(frozen=True, slots=True)
