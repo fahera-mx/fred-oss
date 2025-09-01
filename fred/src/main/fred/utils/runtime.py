@@ -1,6 +1,8 @@
 import datetime as dt
 from dataclasses import dataclass, asdict
 
+from fred.utils.dateops import datetime_utcnow
+
 
 @dataclass(frozen=True, slots=True)
 class RuntimeProfilingSnapshot:
@@ -15,7 +17,7 @@ class RuntimeProfilingSnapshot:
         import psutil
 
         return cls(
-            snapshot_at=dt.datetime.utcnow(),
+            snapshot_at=datetime_utcnow(),
             cpu_percent=psutil.cpu_percent(interval=1),
             virtual_memory_percent=psutil.virtual_memory().percent,
             swap_memory_percent=psutil.swap_memory().percent,
@@ -47,7 +49,7 @@ class RuntimeInfo:
             platform=platform.platform(),
             processor=platform.processor(),
             modules=sorted(cls.get_modules()),
-            snapshot_at=dt.datetime.utcnow(),
+            snapshot_at=datetime_utcnow(),
             profiling_snapshots=[] if exclude_initial_profile else [
                 RuntimeProfilingSnapshot.auto()
             ],
