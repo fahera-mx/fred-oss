@@ -3,7 +3,7 @@ import json
 from dataclasses import dataclass
 from typing import Union
 
-from fred.databricks.runtime import DatabricksRuntimeCatalog
+from fred.integrations.databricks.runtime import DatabricksRuntimeCatalog
 from fred.settings import logger_manager
 
 
