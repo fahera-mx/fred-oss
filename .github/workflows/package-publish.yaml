@@ -12,6 +12,7 @@ on:
 
 jobs:
   python-publish:
+    environment: PYPI Package Publishing
     strategy:
       matrix:
         path:
