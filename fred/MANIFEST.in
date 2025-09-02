@@ -1,3 +1,2 @@
 include requirements.txt
-include requirements-develop.txt
 include src/main/fred/version

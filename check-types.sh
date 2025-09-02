@@ -1,0 +1,1 @@
+mypy fred --ignore-missing-imports --install-types --non-interactive
