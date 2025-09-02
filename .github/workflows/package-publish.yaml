@@ -39,4 +39,4 @@ jobs:
           GH_BRANCH: ${{ github.ref }}
         run: |
           (cd ${{ matrix.path }}; python setup.py sdist)
-          twine upload -u ${TWINE_USERNAME} -p ${TWINE_PASSWORD} --skip-existing ${{ matrix.path }}/dist/*
+          twine upload --skip-existing ${{ matrix.path }}/dist/*
