@@ -29,7 +29,7 @@ class HandlerHelper:
 
     def run(self, event: dict) -> dict:
         job_event_identifier = event.get("id")
-        payload = event.get("payload", {})
+        payload = event.get("input", {})
         start_time = time.perf_counter()
         ok = True
         try:
