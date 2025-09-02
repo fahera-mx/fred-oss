@@ -1,0 +1,1 @@
+pycodestyle fred --max-line-length 120
