@@ -1,0 +1,42 @@
+name: Python Package Publish
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/package-publish.yaml
+      - fred/**
+    types:
+      - closed
+    branches:
+      - main
+
+jobs:
+  python-publish:
+    strategy:
+      matrix:
+        path:
+          - fred
+    if: github.event.pull_request.merged == true
+    name: Python Package Build and Publish for ${{ matrix.path }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Twine
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install setuptools wheel twine
+      - name: Build and Publish
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          GH_BRANCH: ${{ github.ref }}
+        run: |
+          (cd ${{ matrix.path }}; python setup.py sdist)
+          twine upload -u ${TWINE_USERNAME} -p ${TWINE_PASSWORD} --skip-existing ${{ matrix.path }}/dist/*
