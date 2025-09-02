@@ -11,6 +11,9 @@ $ pip install -e fred
 ```
 * General form: `pip install -e path/to/fred`
 
+For development, we recommend installing the development dependencies:
+* `pip install -r fred/requirements-develop.txt`
+
 To install via pypi (currently unsupported) just use:
 ```
 $ pip install fred-oss
