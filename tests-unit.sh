@@ -1,0 +1,1 @@
+(cd fred; coverage run -m pytest src/test)

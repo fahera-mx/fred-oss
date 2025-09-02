@@ -1,0 +1,1 @@
+(cd fred; coverage report --omit="test_*")
