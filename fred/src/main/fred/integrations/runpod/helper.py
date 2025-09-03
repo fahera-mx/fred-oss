@@ -1,5 +1,5 @@
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 from fred.settings import logger_manager
@@ -9,9 +9,15 @@ logger = logger_manager.get_logger(name=__name__)
 
 @dataclass(frozen=True, slots=True)
 class HandlerHelper:
+    context: dict = field(default_factory=dict)
 
     @classmethod
-    def find_handler(cls, import_pattern: str, handler_classname: str) -> 'HandlerHelper':
+    def find_handler(
+            cls,
+            import_pattern: str,
+            handler_classname: str,
+            **init_kwargs,
+    ) -> 'HandlerHelper':
         import importlib
 
         # Dynamically import the handler class
@@ -21,7 +27,7 @@ class HandlerHelper:
         if not handler_cls or not issubclass(handler_cls, cls):
             logger.error(f"Handler class '{handler_classname}' not found or is not a subclass of HandlerHelper.")
             raise ValueError(f"Handler '{handler_classname}' not found in module '{import_pattern}' or is not a subclass of HandlerHelper.")
-        return handler_cls()
+        return handler_cls(**init_kwargs)
 
     def handler(self, payload: dict) -> Optional[dict]:
         logger.warning("Handler method not implemented.")
