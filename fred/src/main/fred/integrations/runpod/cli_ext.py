@@ -23,7 +23,7 @@ class RunPodExt(IntegrationExtCLI):
         return handler.run(
             event={
                 "id": "local-exec",
-                "payload": payload
+                "input": payload,
             }
         )
 
