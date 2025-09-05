@@ -1,4 +1,4 @@
-from fred.integrations.runpod.helper import HandlerHelper
+from fred.worker.interface import HandlerInterface
 from fred.cli.interface import IntegrationExtCLI
 from fred.settings import logger_manager
 
@@ -8,8 +8,8 @@ logger = logger_manager.get_logger(name=__name__)
 
 class RunPodExt(IntegrationExtCLI):
 
-    def get_handler_instance(self, import_pattern: str, handler_classname: str) -> HandlerHelper:
-        return HandlerHelper.find_handler(
+    def get_handler_instance(self, import_pattern: str, handler_classname: str) -> HandlerInterface:
+        return HandlerInterface.find_handler(
             import_pattern=import_pattern,
             handler_classname=handler_classname,
         )
