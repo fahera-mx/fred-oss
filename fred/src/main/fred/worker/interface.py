@@ -13,9 +13,6 @@ logger = logger_manager.get_logger(name=__name__)
 
 @dataclass(frozen=True, slots=False)
 class HandlerInterface:
-    context: dict = field(default_factory=dict)
-    metadata: dict = field(default_factory=dict)
-
     """Base interface for handling events in a worker environment.
     
     This class provides a structure for processing events with metadata tracking.
@@ -27,6 +24,8 @@ class HandlerInterface:
         context (dict): A dictionary to hold contextual information for the handler; this can be modified as needed.
         metadata (dict): A dictionary to track metadata about the handler's operations.
     """
+    context: dict = field(default_factory=dict)
+    metadata: dict = field(default_factory=dict)
 
     def __post_init__(self):
         self.metadata["handler_created_at"] = datetime_utcnow().isoformat()
@@ -46,7 +45,7 @@ class HandlerInterface:
         # Ensure the handler class exists and is a subclass of HandlerInterface
         if not handler_cls or not issubclass(handler_cls, cls):
             logger.error(f"Handler class '{handler_classname}' not found or is not a subclass of HandlerInterface: {handler_cls}")
-            raise ValueError(f"Handler '{handler_classname}' not found in module '{import_pattern}' or is not a subclass of HandlerHelper.")
+            raise ValueError(f"Handler '{handler_classname}' not found in module '{import_pattern}' or is not a subclass of HandlerInterface.")
         kwargs = {
             "metadata": {
                 "handler_found_at": datetime_utcnow().isoformat()
