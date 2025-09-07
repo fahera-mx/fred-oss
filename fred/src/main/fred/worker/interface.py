@@ -175,7 +175,7 @@ class HandlerInterface:
                     }
             case action if isinstance(action, str):
                 # Handle custom actions defined in the custom_actions dictionary
-                logger.error(f"Non-standard fred_worker_action '{action}' received.")
+                logger.info(f"Custom fred_worker_action '{action}' received.")
                 match self.custom_actions.get(action):
                     case None:
                         ok = False
