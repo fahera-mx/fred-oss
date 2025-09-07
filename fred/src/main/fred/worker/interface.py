@@ -198,7 +198,7 @@ class HandlerInterface:
                         }
             case _:
                 # Handle invalid action types
-                logger.error(f"Invalid fred_worker_action type received: {type(payload)}")
+                logger.error(f"Invalid fred_worker_action type received: {type(worker_action)}")
                 ok = False
                 response = {
                     "error": "Invalid fred_worker_action type."
