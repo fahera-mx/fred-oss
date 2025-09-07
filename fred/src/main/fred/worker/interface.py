@@ -68,7 +68,7 @@ class HandlerInterface:
             def my_custom_action_method(self, **kwargs) -> dict:
                 return {"status": "custom action executed", **kwargs}
 
-            def register_actions(self, actions: Optional[dict] = None) -> 'HandlerInterface:
+            def register_actions(self, actions: Optional[dict] = None) -> 'HandlerInterface':
                 # Call the parent method to register base actions
                 super().register_actions(actions=actions)
                 # Register additional custom actions specific to MyHandler
