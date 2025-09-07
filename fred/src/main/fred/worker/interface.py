@@ -107,7 +107,7 @@ class HandlerInterface:
             ValueError: If the action_callable is not callable.
         """
         if not callable(action_callable):
-            raise ValueError(f"The action_callable must be a callable function or metho: {type(action_callable)}")
+            raise ValueError(f"The action_callable must be a callable function or method: {type(action_callable)}")
         if action_name in self.custom_actions:
             if ignore_if_exists:
                 logger.info(f"Custom action '{action_name}' already exists; ignoring as per flag.")
