@@ -157,6 +157,13 @@ class HandlerInterface:
         ok = True
         response = None
         # Determine action based on 'fred_worker_action' in payload
+        propagate_worker_error = int(payload.pop(
+            "propagate_worker_error",
+            get_environ_variable(
+                "FRD_PROPAGATE_WORKER_ERROR",
+                default="0"
+            )
+        ))
         match (worker_action := payload.pop("fred_worker_action", "handler")):
             case "telemetry":
                 # Collect and return telemetry data
@@ -170,6 +177,8 @@ class HandlerInterface:
                 except Exception as e:
                     ok = False
                     logger.error(f"Error processing handler for event {job_event_identifier}: {e}")
+                    if propagate_worker_error:
+                        raise
                     response = {
                         "error": str(e)
                     }
@@ -188,17 +197,24 @@ class HandlerInterface:
                         except Exception as e:
                             ok = False
                             logger.error(f"Error processing custom action '{action}' for event {job_event_identifier}: {e}")
+                            if propagate_worker_error:
+                                raise
                             response = {
                                 "error": str(e)
                             }
                     case _:
                         ok = False
+                        logger.error(f"Custom action '{action}' is not callable.")
+                        if propagate_worker_error:
+                            raise ValueError(f"Custom action '{action}' is not callable.")
                         response = {
                             "error": f"Custom action '{action}' is not callable."
                         }
             case _:
                 # Handle invalid action types
                 logger.error(f"Invalid fred_worker_action type received: {type(worker_action)}")
+                if propagate_worker_error:
+                    raise ValueError("Invalid fred_worker_action type.")
                 ok = False
                 response = {
                     "error": "Invalid fred_worker_action type."
