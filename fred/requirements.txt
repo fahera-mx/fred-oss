@@ -2,4 +2,6 @@
 fire==0.7.1
 # Minimal requirements
 psutil==7.0.0
+# Fred Workers Infra
+redis==6.4.0
 # Databricks Runtime: 16.4 LTS (Python 3.12.3)
