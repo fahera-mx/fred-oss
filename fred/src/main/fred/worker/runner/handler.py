@@ -27,14 +27,14 @@ class RunnerHandler(HandlerInterface):
         lifespan = payload.get("lifetime", 3600)  # Default to 1 hour if not specified
         timeout = payload.get("timeout", 30)  # Default to 30 seconds if not specified
         # Get Redis connection details from payload or environment variables
-        redis_configs = payload.pop(
-            "redis_configs",
-            {
-                "host": get_environ_variable(name="REDIS_HOST", default="localhost"),
-                "port": int(get_environ_variable(name="REDIS_PORT", default=6379)),
-                "db": int(get_environ_variable(name="REDIS_DB", default=0)),
-            }
-        )
+        redis_configs = {
+            "host": get_environ_variable(name="REDIS_HOST", default="localhost"),
+            "port": int(get_environ_variable(name="REDIS_PORT", default=6379)),
+            "password": get_environ_variable(name="REDIS_PASSWORD", default=None),
+            "db": int(get_environ_variable(name="REDIS_DB", default=0)),
+            "decode_responses": True,
+            **payload.pop("redis_configs", {}),
+        }
         # Connect to Redis
         redis = Redis(**redis_configs)
         req_queue = payload.pop("redis_request_queue", None) or get_environ_variable(name="FRD_RUNNER_REQUEST_QUEUE", default=None) or (
@@ -64,16 +64,16 @@ class RunnerHandler(HandlerInterface):
                 break
             # Fetch item from Redis queue 
             try:
-                item_raw = redis.rpop(req_queue)
+                item_str = redis.rpop(req_queue)
             except Exception as e:
                 logger.error(f"Error fetching item from Redis queue '{req_queue}': {e}")
                 continue
             # If no item, iterate again
-            if not item_raw:
+            if not item_str:
                 continue
             try:
                 # Handle special signals
-                match (item_str := item_raw.decode("utf-8")):
+                match item_str:
                     case "STOP" | "SHUTDOWN" | "TERMINATE":
                         logger.info("Received STOP signal; exiting runner loop.")
                         break
