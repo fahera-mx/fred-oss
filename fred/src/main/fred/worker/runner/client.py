@@ -23,7 +23,10 @@ class RunnerClient:
         redis_configs = {
             "host": kwargs.get("host") or get_environ_variable(name="REDIS_HOST", default="localhost"),
             "port": int(kwargs.get("port") or get_environ_variable(name="REDIS_PORT", default=6379)),
+            "password": get_environ_variable(name="REDIS_PASSWORD", default=None),
             "db": int(kwargs.get("db") or get_environ_variable(name="REDIS_DB", default=0)),
+            "decode_responses": True,
+            **kwargs.pop("redis_configs", {}),
         }
         redis_instance = Redis(**redis_configs)
         req_queue = kwargs.get("request_queue") or get_environ_variable(name="FRD_RUNNER_REQUEST_QUEUE", default=None) or (
