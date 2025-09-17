@@ -31,7 +31,7 @@ def get_request_queue_name_from_payload(
     return get_queue_name_from_payload(
         payload=payload,
         search_keys=["redis_request_queue", "request_queue", "req_queue"],
-        env_fallback="FRD_RUNNER_RESPONSE_QUEUE",
+        env_fallback="FRD_RUNNER_REQUEST_QUEUE",
         default="req:demo",
         keep=keep,
     )
