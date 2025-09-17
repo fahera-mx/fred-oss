@@ -2,6 +2,7 @@ from fred.worker.runner.utils import (
     get_queue_name_from_payload,
     get_request_queue_name_from_payload,
     get_response_queue_name_from_payload,
+    get_redis_configs_from_payload,
 )
 
 
@@ -110,3 +111,41 @@ def test_get_response_queue_name_from_payload():
     assert "response_queue" not in payload
     assert "res_queue" not in payload
     assert payload == {}  # Ensure original payload is empty after pops
+
+def test_get_redis_configs_from_payload():
+    payload = {
+        "host": "localhost",
+        "port": 6379,
+        "password": "secret",
+        "db": 0,
+    }
+    configs = get_redis_configs_from_payload(payload=payload, keep=False)
+    assert configs == {
+        "host": "localhost",
+        "port": 6379,
+        "password": "secret",
+        "db": 0,
+        "decode_responses": True,
+    }
+    assert "host" not in payload
+    assert "port" not in payload
+    assert "password" not in payload
+    assert "db" not in payload
+    payload = {
+        "host": "localhost",
+        "port": 6379,
+        "password": "secret",
+        "db": 0,
+    }
+    configs = get_redis_configs_from_payload(payload=payload, keep=True)
+    assert configs == {
+        "host": "localhost",
+        "port": 6379,
+        "password": "secret",
+        "db": 0,
+        "decode_responses": True,
+    }
+    assert "host" in payload
+    assert "port" in payload
+    assert "password" in payload
+    assert "db" in payload
