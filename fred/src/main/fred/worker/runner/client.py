@@ -6,6 +6,10 @@ from fred.settings import (
     get_environ_variable,
     logger_manager,
 )
+from fred.worker.runner.utils import (
+    get_request_queue_name_from_payload,
+    get_response_queue_name_from_payload,
+)
 
 from redis import Redis
 
@@ -29,11 +33,10 @@ class RunnerClient:
             **kwargs.pop("redis_configs", {}),
         }
         redis_instance = Redis(**redis_configs)
-        req_queue = kwargs.get("request_queue") or get_environ_variable(name="FRD_RUNNER_REQUEST_QUEUE", default=None) or (
-            logger.warning("Redis request queue not specified; defaulting to 'req:demo'.") or "req:demo"
-        )
-        res_queue = kwargs.get("response_queue") or get_environ_variable(name="FRD_RUNNER_RESPONSE_QUEUE", default=None) or (
-            logger.warning("Redis response queue not specified; defaulting to inferring pattern.") or f"res:{req_queue.split(':')[-1]}"
+        req_queue = get_request_queue_name_from_payload(payload=kwargs, keep=False) 
+        res_queue = get_response_queue_name_from_payload(payload=kwargs, keep=False) or (
+            logger.warning("Redis response queue not specified; defaulting to inferring pattern.")
+            or f"res:{req_queue.split(':')[-1]}"
         )
         logger.info(f"Connecting to Redis, using request queue '{req_queue}' and response queue '{res_queue}'.")
         return cls(
