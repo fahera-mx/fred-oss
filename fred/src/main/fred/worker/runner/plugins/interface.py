@@ -79,7 +79,7 @@ class PluginInterface:
         ) -> str:
         """Wrapper method to handle execution and include error logging.
 
-        Since we don't control the implementation of thte _execute method in subclasses, we
+        Since we don't control the implementation of the _execute method in subclasses, we
         need to wrap it to add error handling and logging.
 
         Args:
