@@ -18,6 +18,11 @@ class CLIExtensionGroups:
     def runpod(self):
         from fred.integrations.runpod.cli_ext import RunPodExt
         return RunPodExt()
+    
+    @property
+    def runner_server(self):
+        from fred.worker.runner.rest.cli_ext import RunnerServerExt
+        return RunnerServerExt()
 
 
 class CLI(AbstractCLI, CLIExtensionGroups):
