@@ -16,20 +16,29 @@ class RunnerServer:
 
     @classmethod
     def auto(cls, **kwargs) -> "RunnerServer":
-        include_routers = [
-            name.upper()
-            for name in kwargs.pop(
-                "include_routers",
-                get_environ_variable("FRD_RUNNER_API_INCLUDE_ROUTERS", default="").split(";"),
-            )
-        ]
-        exclude_routers = [
-            name.upper()
-            for name in kwargs.pop(
-                "exclude_routers",
-                get_environ_variable("FRD_RUNNER_API_EXCLUDE_ROUTERS", default="").split(";"),
-            )
-        ]
+        # Include routers by checking on keyword argument or environment variable
+        include_routers = kwargs.pop("include_routers", None) or get_environ_variable(
+            "FRD_RUNNER_API_INCLUDE_ROUTERS",
+            default=""
+        )
+        if isinstance(include_routers, str):
+            include_routers = [
+                name.upper()
+                for router in include_routers.split(";")
+                if (name := router.strip())
+            ]
+        # Exclude routers by checking on keyword argument or environment variable
+        exclude_routers = kwargs.pop("exclude_routers", None) or get_environ_variable(
+            "FRD_RUNNER_API_EXCLUDE_ROUTERS",
+            default=""
+        )
+        if isinstance(exclude_routers, str):
+            exclude_routers = [
+                name.upper()
+                for router in exclude_routers.split(";")
+                if (name := router.strip())
+            ]
+        # Create FastAPI instance
         app_instance = FastAPI(**kwargs)
         return cls(
             app=app_instance,
@@ -38,8 +47,11 @@ class RunnerServer:
         )
 
     def __post_init__(self):
+        logger.info("Attempting to register routers...")
+        logger.info("Included routers candidates: %s", self.include_routers or "ALL")
+        logger.info("Excluded routers candidates: %s", self.exclude_routers or "NONE")
         for router in RouterCatalog:
-            name = router.name
+            name = router.name.upper()
             if self.include_routers and name not in self.include_routers:
                 logger.info(f"Skipping router '{name}' as it's not in the include list.")
                 continue
