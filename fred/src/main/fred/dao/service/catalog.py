@@ -15,7 +15,7 @@ class ServiceCatalog(enum.Enum):
                 return item
         raise ValueError(f"No service found for classname: {classname}")
 
-    @lru_cache
+    @lru_cache(maxsize=None)  # TODO: Consider cache invalidation strategy if needed
     def component_catalog(self, **kwargs) -> enum.Enum:
         """Get a preconfigured component catalog for this (self) service.
         This method returns a new Enum with preconfigured components for the

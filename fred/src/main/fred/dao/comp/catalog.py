@@ -51,7 +51,7 @@ class CompCatalog(enum.Enum):
         raise ValueError(f"No component found for classname: {classname}")
 
     @classmethod
-    @lru_cache
+    @lru_cache(maxsize=None)  # TODO: Consider cache invalidation strategy if needed
     def preconf(cls, srv_name: str, **kwargs) -> enum.Enum:
         """Create a new Enum with preconfigured components for a specific service name.
         Args:
