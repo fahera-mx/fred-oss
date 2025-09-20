@@ -31,7 +31,7 @@ class SrvCompanionMixin:
 class ComponentInterface(SrvCompanionMixin):
 
     @classmethod
-    def mount(cls, srv_name: Optional[str] = None, **kwargs) -> "ComponentInterface":
+    def mount(cls, srv_name: Optional[str] = None, **kwargs) -> type["ComponentInterface"]:
         """Mounts the component to a specific service instance.
         This method configures the component to use a service instance
         identified by `srv_name` and any additional parameters passed via `kwargs`.
@@ -56,4 +56,4 @@ class ComponentInterface(SrvCompanionMixin):
                       as a dictionary.
         """
         srv_kwargs = kwargs.pop("srv_kwargs", {})
-        return cls.mount(name=srv_name, **srv_kwargs)(**kwargs)
+        return cls.mount(srv_name=srv_name, **srv_kwargs)(**kwargs)
