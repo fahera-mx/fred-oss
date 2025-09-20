@@ -4,10 +4,6 @@ from typing import (
     TypeVar,
 )
 
-from fred.settings import logger_manager
-
-logger = logger_manager.get_logger(__name__)
-
 A = TypeVar("A")
 B = TypeVar("B")
 
