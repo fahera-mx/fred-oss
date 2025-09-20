@@ -85,12 +85,12 @@ class CompCatalog(enum.Enum):
         """
         return self.value
 
-    def auto(self, srv_name: Optional[str] = None, **kwargs) -> ComponentInterface:
+    def auto(self, srv_ref: Optional[SRV_REF_TYPE] = None, **kwargs) -> ComponentInterface:
         """Automatically creates an instance of the component, mounting it to a service.
         This method is a convenience wrapper that first mounts the component to a service
         and then creates an instance of the component.
         Args:
-            srv_name (Optional[str]): The name of the service to mount. Defaults to None.
+            srv_ref (Optional[SRV_REF_TYPE]): The service reference to mount the component to.
             **kwargs: Additional keyword arguments for both mounting the service and
                       creating the component instance. If there are specific arguments
                       for the service, they should be passed under the key `srv_kwargs`
@@ -98,4 +98,5 @@ class CompCatalog(enum.Enum):
         Returns:
             ComponentInterface: An instance of the component.
         """
-        return self.value.auto(srv_ref=srv_name, **kwargs)
+        srv_ref = srv_ref or kwargs.pop("srv_name", None)  # Backward compatibility
+        return self.value.auto(srv_ref=srv_ref, **kwargs)
