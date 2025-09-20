@@ -1,8 +1,11 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from fred.settings import logger_manager
 from fred.dao.service.catalog import ServiceCatalog
 from fred.dao.comp.interface import ComponentInterface
+
+logger = logger_manager.get_logger(name=__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +37,11 @@ class FredKeyVal(ComponentInterface):
                 expire = kwargs.get("expire")
                 if expire and isinstance(expire, int):
                     self._srv.client.expire(key, expire)
+            case ServiceCatalog.STDLIB:
+                self._srv.client._memstore_keyval[key] = value
+                # TODO: Implement expiration logic
+                if "expire" in kwargs:
+                    logger.warning("Expiration not implemented for STDLIB service.")
             case _:
                 raise NotImplementedError(f"Set method not implemented for service {self._nme}")
 
@@ -53,14 +61,17 @@ class FredKeyVal(ComponentInterface):
             NotImplementedError: If the method is not implemented for the current service.
         """
         key = key or self.key
+        result = None
         match self._cat:
             case ServiceCatalog.REDIS:
                 result = self._srv.client.get(key)
-                if result is None and fail:
-                    raise KeyError(f"Key {key} not found.")
-                return result
+            case ServiceCatalog.STDLIB:
+                result = self._srv.client._memstore_keyval.get(key)
             case _:
                 raise NotImplementedError(f"Get method not implemented for service {self._nme}")
+        if fail and result is None:
+            raise KeyError(f"Key {key} not found.")
+        return result
 
     def delete(self, key: Optional[str] = None) -> None:
         """Deletes a key-value pair from the store.
@@ -76,5 +87,7 @@ class FredKeyVal(ComponentInterface):
         match self._cat:
             case ServiceCatalog.REDIS:
                 self._srv.client.delete(key)
+            case ServiceCatalog.STDLIB:
+                self._srv.client._memstore_keyval.pop(key, None)
             case _:
                 raise NotImplementedError(f"Delete method not implemented for service {self._nme}")

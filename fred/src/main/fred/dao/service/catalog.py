@@ -4,11 +4,13 @@ from typing import TypeVar, Optional
 
 from fred.dao.service.interface import ServiceInterface
 from fred.dao.service._redis import RedisService
+from fred.dao.service._stdlib import StdLibService
 
 T = TypeVar("T")
 
 
 class ServiceCatalog(enum.Enum):
+    STDLIB = StdLibService
     REDIS = RedisService
 
     @classmethod
