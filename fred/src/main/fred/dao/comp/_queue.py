@@ -50,7 +50,7 @@ class FredQueue(ComponentInterface):
             case ServiceCatalog.REDIS:
                 self._srv.client.delete(self.name)
             case ServiceCatalog.STDLIB:
-                if (q := self._srv._memstore_queue.pop(self.name, None)):
+                if (q := self._srv.client._memstore_queue.pop(self.name, None)):
                     del q
             case _:
                 raise NotImplementedError(f"Clear method not implemented for service {self._nme}")
