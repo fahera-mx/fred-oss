@@ -12,8 +12,9 @@ class FredKeyVal(ComponentInterface):
     getting, and deleting key-value pairs. The actual implementation of these methods
     depends on the underlying service being used (e.g., Redis).
     """
+    key: str
     
-    def set(self, key: str, value: str, **kwargs) -> None:
+    def set(self, value: str, key: Optional[str] = None, **kwargs) -> None:
         """Sets a key-value pair in the store.
         The implementation of this method depends on the underlying service.
         For example, if the service is Redis, it uses the SET command to store the
@@ -26,6 +27,7 @@ class FredKeyVal(ComponentInterface):
         Raises:
             NotImplementedError: If the method is not implemented for the current service.
         """
+        key = key or self.key
         match self._cat:
             case ServiceCatalog.REDIS:
                 self._srv.client.set(key, value)
@@ -35,7 +37,7 @@ class FredKeyVal(ComponentInterface):
             case _:
                 raise NotImplementedError(f"Set method not implemented for service {self._nme}")
 
-    def get(self, key: str, fail: bool = False) -> Optional[str]:
+    def get(self, key: Optional[str] = None, fail: bool = False) -> Optional[str]:
         """Gets the value associated with a key from the store.
         The implementation of this method depends on the underlying service.
         For example, if the service is Redis, it uses the GET command to retrieve the
@@ -50,6 +52,7 @@ class FredKeyVal(ComponentInterface):
             KeyError: If the key is not found and fail is True.
             NotImplementedError: If the method is not implemented for the current service.
         """
+        key = key or self.key
         match self._cat:
             case ServiceCatalog.REDIS:
                 result = self._srv.client.get(key)
@@ -59,7 +62,7 @@ class FredKeyVal(ComponentInterface):
             case _:
                 raise NotImplementedError(f"Get method not implemented for service {self._nme}")
 
-    def delete(self, key: str) -> None:
+    def delete(self, key: Optional[str] = None) -> None:
         """Deletes a key-value pair from the store.
         The implementation of this method depends on the underlying service.
         For example, if the service is Redis, it uses the DEL command to remove the
@@ -69,6 +72,7 @@ class FredKeyVal(ComponentInterface):
         Raises:
             NotImplementedError: If the method is not implemented for the current service.
         """
+        key = key or self.key
         match self._cat:
             case ServiceCatalog.REDIS:
                 self._srv.client.delete(key)
