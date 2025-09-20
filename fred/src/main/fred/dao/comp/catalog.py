@@ -2,7 +2,7 @@ import enum
 from functools import lru_cache
 from typing import Optional
 
-from fred.dao.comp.interface import ComponentInterface
+from fred.dao.comp.interface import ComponentInterface, SRV_REF_TYPE
 from fred.dao.comp._queue import FredQueue
 from fred.dao.comp._keyval import FredKeyVal
 
@@ -52,7 +52,7 @@ class CompCatalog(enum.Enum):
 
     @classmethod
     @lru_cache(maxsize=None)  # TODO: Consider cache invalidation strategy if needed
-    def preconf(cls, srv_name: str, **kwargs) -> enum.Enum:
+    def preconf(cls, srv_ref: SRV_REF_TYPE, **kwargs) -> enum.Enum:
         """Create a new Enum with preconfigured components for a specific service name.
         Args:
             srv_name (str): The service name to preconfigure the components with.
@@ -60,9 +60,21 @@ class CompCatalog(enum.Enum):
         Returns:
             enum.Enum: A new Enum class with preconfigured components.
         """
+        from fred.dao.service.interface import ServiceInterface
+        from fred.dao.service.catalog import ServiceCatalog
+        srv_name = ""
+        match srv_ref:
+            case str() as name:
+                srv_name = name.title()
+            case ServiceCatalog() as cat:
+                srv_name = cat.name.title()
+            case ServiceInterface() as instance:
+                srv_name = ServiceCatalog.from_classname(instance.__class__.__name__).name.title()
+            case _:
+                raise ValueError(f"Invalid service '{srv_ref}' type: {type(srv_ref)}")
         return enum.Enum(
             f"{srv_name.title()}{cls.__name__}",
-            {item.name: item.value.mount(srv_name=srv_name, **kwargs) for item in cls},
+            {item.name: item.value.mount(srv_ref=srv_ref, **kwargs) for item in cls},
             type=_PreconfCatalogMixin,
         )
 
@@ -73,12 +85,12 @@ class CompCatalog(enum.Enum):
         """
         return self.value
 
-    def auto(self, srv_name: Optional[str] = None, **kwargs) -> ComponentInterface:
+    def auto(self, srv_ref: Optional[SRV_REF_TYPE] = None, **kwargs) -> ComponentInterface:
         """Automatically creates an instance of the component, mounting it to a service.
         This method is a convenience wrapper that first mounts the component to a service
         and then creates an instance of the component.
         Args:
-            srv_name (Optional[str]): The name of the service to mount. Defaults to None.
+            srv_ref (Optional[SRV_REF_TYPE]): The service reference to mount the component to.
             **kwargs: Additional keyword arguments for both mounting the service and
                       creating the component instance. If there are specific arguments
                       for the service, they should be passed under the key `srv_kwargs`
@@ -86,4 +98,5 @@ class CompCatalog(enum.Enum):
         Returns:
             ComponentInterface: An instance of the component.
         """
-        return self.value.auto(srv_name=srv_name, **kwargs)
+        srv_ref = srv_ref or kwargs.pop("srv_name", None)  # Backward compatibility
+        return self.value.auto(srv_ref=srv_ref, **kwargs)
