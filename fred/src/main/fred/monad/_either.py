@@ -25,7 +25,7 @@ class EitherWrapper(Generic[A]):
 
     def either(self, *args, **kwargs)-> 'Either[A]':
         try:
-            return Right[A].from_value(x=self.function(*args, **kwargs))
+            return Right[A].from_value(val=self.function(*args, **kwargs))
         except Exception as e:
             return Left(exception=e)
 
