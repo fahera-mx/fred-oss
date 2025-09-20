@@ -1,8 +1,11 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from fred.settings import logger_manager
 from fred.dao.service.catalog import ServiceCatalog
 from fred.dao.comp.interface import ComponentInterface
+
+logger = logger_manager.get_logger(name=__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,6 +32,9 @@ class FredQueue(ComponentInterface):
         match self._cat:
             case ServiceCatalog.REDIS:
                 return self._srv.client.llen(self.name)
+            case ServiceCatalog.STDLIB:
+                q = self._srv.client._memstore_queue.get(self.name, None)
+                return q.qsize() if q else 0
             case _:
                 raise NotImplementedError(f"Size method not implemented for service {self._nme}")
 
@@ -43,6 +49,9 @@ class FredQueue(ComponentInterface):
         match self._cat:
             case ServiceCatalog.REDIS:
                 self._srv.client.delete(self.name)
+            case ServiceCatalog.STDLIB:
+                if (q := self._srv._memstore_queue.pop(self.name, None)):
+                    del q
             case _:
                 raise NotImplementedError(f"Clear method not implemented for service {self._nme}")
 
@@ -59,6 +68,11 @@ class FredQueue(ComponentInterface):
         match self._cat:
             case ServiceCatalog.REDIS:
                 self._srv.client.lpush(self.name, item)
+            case ServiceCatalog.STDLIB:
+                from queue import Queue
+                qs = self._srv.client._memstore_queue
+                q = qs[self.name] = qs.get(self.name, None) or Queue()
+                q.put(item)
             case _:
                 raise NotImplementedError(f"Add method not implemented for service {self._srv._nme}")
 
@@ -75,5 +89,14 @@ class FredQueue(ComponentInterface):
         match self._cat:
             case ServiceCatalog.REDIS:
                 return self._srv.client.rpop(self.name)
+            case ServiceCatalog.STDLIB:
+                from queue import Empty
+                if not (q := self._srv.client._memstore_queue.get(self.name, None)):
+                    return None
+                try:
+                    return q.get_nowait()
+                except Empty:
+                    logger.info(f"Queue '{self.name}' is empty.")
+                    return None
             case _:
                 raise NotImplementedError(f"Pop method not implemented for service {self._srv._nme}")
