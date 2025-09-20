@@ -77,7 +77,7 @@ class Right(Either[A]):
         try:
             return function(self.value)
         except Exception as e:
-            logger.error(f"Error in flat_map: {e}")
+            logger.exception(f"Error in flat_map: {e}")
             # Consider that a right that fails is a left
             return Left(exception=e)
 
