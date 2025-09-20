@@ -25,4 +25,4 @@ class MonadInterface(Generic[A]):
 
     def map(self, function: Callable[[A], B]) -> 'MonadInterface[B]':
         # Map can be implemented using flat_map to avoid code duplication and ensure consistency
-        return self.flat_map(function=lambda value: self.__class__[B].from_value(val=function(value)))
+        return self.flat_map(function=lambda value: type(self).from_value(function(value)))
