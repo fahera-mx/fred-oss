@@ -43,7 +43,7 @@ class FutureBackend:
         """
         components = service.component_catalog(**kwargs)
         return type(
-            cls.__name__.replace("Iterface", service.name.title()),
+            f"{service.name.title()}{cls.__name__}",
             (cls,),
             {
                 "keyval": components.KEYVAL.value
