@@ -91,3 +91,9 @@ class Left(Either[A]):
     
     def map(self, function: Callable[[A], B]) -> Either[B]:
         return Left(exception=self.exception)  # Propagate exception
+
+
+class EitherMonad(Either[A]):
+    Either = Either
+    Left = Left
+    Right = Right
