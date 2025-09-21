@@ -76,8 +76,8 @@ class Future(MonadInterface[A]):
         self.thread.start()
 
     @property
-    def _result(self) -> FutureResult[A]:
-        return FutureResult.from_backend(future_id=self.future_id)  # type: ignore
+    def _result(self) -> Optional[FutureResult[A]]:
+        return FutureResult.from_backend(future_id=self.future_id)
     
     @property
     def _status(self) -> Optional[str]:
