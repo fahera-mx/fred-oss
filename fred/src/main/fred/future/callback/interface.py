@@ -24,7 +24,7 @@ class CallbackInterface(Generic[A]):
             bool: True if the callback executed successfully, False otherwise.
         """
         # TODO: Consider using a richer return type to capture more details about the execution
-        #  and optionally propagate the callaback return value.
+        #  and optionally propagate the callback return value.
         try:
             self.execute(output=output)
             return True
