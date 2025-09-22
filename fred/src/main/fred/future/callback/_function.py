@@ -15,5 +15,5 @@ class CallbackFunction(CallbackInterface[A]):
         self.function = function
         self.kwargs = kwargs
 
-    def execute(self, output: EitherMonad.Either[A]):
+    def execute(self, future_id: str, output: EitherMonad.Either[A]):
         self.function(output, **self.kwargs)
