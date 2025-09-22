@@ -6,6 +6,7 @@ from typing import (
 )
 
 from fred.settings import logger_manager
+from fred.future.callback.interface import CallbackInterface
 from fred.monad.interface import MonadInterface
 from fred.monad.catalog import EitherMonad
 from fred.future.result import (
@@ -58,6 +59,7 @@ class Future(MonadInterface[A]):
     def __init__(
             self,
             function: Callable[..., A],
+            on_complete: Optional[CallbackInterface] = None,
             **kwargs
         ):
         """Initializes a Future with the provided function to be executed asynchronously.
@@ -78,7 +80,11 @@ class Future(MonadInterface[A]):
         # Note: The thread is a daemon to ensure it does not block program exit.
         self.future_id = future.future_id
         self.thread = Thread(
-            target=lambda: future.apply(function=function, **kwargs),
+            target=lambda: future.apply(
+                function=function,
+                on_complete=on_complete,
+                **kwargs
+            ),
             daemon=True,
         )
         # Start the thread to execute the function asynchronously
