@@ -55,15 +55,24 @@ class Future(MonadInterface[A]):
     TODO: Consider using more advanced concurrency primitives for better control and efficiency.
     """
 
-    def __init__(self, function: Callable[..., A], **kwargs):
+    def __init__(
+            self,
+            function: Callable[..., A],
+            **kwargs
+        ):
         """Initializes a Future with the provided function to be executed asynchronously.
         The function is executed in a separate thread, allowing for non-blocking operations.
+
         Args:
             function (Callable[..., A]): The function to be executed asynchronously.
+            future_id (Optional[str], keyword-only): A reserved keyword-only parameter used to
+                uniquely identify this Future instance. This value is consumed by the Future
+                infrastructure and is not passed to the target function.
             **kwargs: Additional keyword arguments to be passed to the function when executed.
+                All keyword arguments except 'future_id' are forwarded to the target function.
         """
         # Create a new available future
-        future = FutureUndefinedPending.auto()
+        future = FutureUndefinedPending.auto(future_id=kwargs.pop("future_id", None))
         # Register the Future-ID and define the available future via the provided function.
         # Note: The 'apply' method is blocking by itself; thus, we run it in a separate thread.
         # Note: The thread is a daemon to ensure it does not block program exit.
