@@ -17,8 +17,9 @@ from fred.future.settings import (
     FRD_FUTURE_DEFAULT_EXPIRATION,
     FRD_FUTURE_DEFAULT_TIMEOUT,
 )
-from fred.utils.dateops import datetime_utcnow
+from fred.future.callback.interface import CallbackInterface
 from fred.dao.service.catalog import ServiceCatalog
+from fred.utils.dateops import datetime_utcnow
 from fred.dao.comp.catalog import FredKeyVal
 from fred.monad.catalog import EitherMonad
 
@@ -162,7 +163,12 @@ class FutureUndefinedPending(FutureResult[A]):
             expire=FRD_FUTURE_DEFAULT_EXPIRATION
         )
 
-    def apply(self, function: Callable[..., A], **kwargs) -> 'FutureDefined[A]':
+    def apply(
+            self,
+            function: Callable[..., A],
+            on_complete: Optional[CallbackInterface] = None,
+            **kwargs
+        ) -> 'FutureDefined[A]':
         """Applies a function to the Future, transitioning it from pending to in-progress and finalizing as defined.
         This method executes the provided function with the given keyword arguments,
         transitioning the Future from a pending state to an in-progress state. It captures
@@ -179,7 +185,11 @@ class FutureUndefinedPending(FutureResult[A]):
             started_at=perf_counter(),
             function_name=function.__name__,
         )
-        return fip.exec(function=function, **kwargs)
+        return fip.exec(
+            function=function,
+            on_complete=on_complete,
+            **kwargs
+        )
 
 
 @dataclass(frozen=True, slots=False)
@@ -199,7 +209,13 @@ class FutureUndefinedInProgress(FutureResult[A]):
             expire=FRD_FUTURE_DEFAULT_EXPIRATION
         )
 
-    def exec(self, function: Callable[..., A], fail: bool = False, **kwargs) -> 'FutureDefined[A]':
+    def exec(
+            self,
+            function: Callable[..., A],
+            on_complete: Optional[CallbackInterface] = None,
+            fail: bool = False,
+            **kwargs,
+        ) -> 'FutureDefined[A]':
         """Executes the function associated with the Future, capturing its result or exception.
         This method runs the provided function with the given keyword arguments, capturing
         its output. If the function executes successfully, it wraps the result in a Right
@@ -231,11 +247,21 @@ class FutureUndefinedInProgress(FutureResult[A]):
             value = EitherMonad.Left.from_value(val=e)
             if fail:
                 raise e
-        return FutureDefined(
+        future_defined = FutureDefined(
             future_id=self.future_id,
             value=value,
             ok=ok,
         )
+        # We could do the following to have an "on_success" behaviour:
+        # value.map(lambda v: on_complete.run(v) if on_complete else None)
+        # But that would leave out the "on_failure" behaviour and we would probably need to
+        # add specific 'on_success' and 'on_failure' callbacks to mitigate that.
+        # Instead, we just do a generic 'on_complete' callback that gets executed
+        # wrapped on an Either monad so the user can handle success/failure as needed.
+        if on_complete:
+            logger.debug(f"Future[{self.future_id}] executing on_complete callback")
+            on_complete.run(value)
+        return future_defined
 
 
 @dataclass(frozen=True, slots=False)
