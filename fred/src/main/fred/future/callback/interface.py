@@ -13,10 +13,10 @@ A = TypeVar("A")
 
 class CallbackInterface(Generic[A]):
     
-    def execute(self, output: EitherMonad.Either[A]):
+    def execute(self, future_id: str, output: EitherMonad.Either[A]):
         raise NotImplementedError()
     
-    def run(self, output: EitherMonad.Either[A]) -> bool:
+    def run(self, future_id: str, output: EitherMonad.Either[A]) -> bool:
         """Executes the callback with the provided output and handles any exceptions.
         Args:
             output (EitherMonad.Either[A]): The output to be passed to the callback.
@@ -29,5 +29,5 @@ class CallbackInterface(Generic[A]):
             self.execute(output=output)
             return True
         except Exception as e:
-            logger.error(f"Callback execution failed: {e}")
+            logger.error(f"Callback execution failed on future '{future_id}': {e}")
             return False
