@@ -260,7 +260,7 @@ class FutureUndefinedInProgress(FutureResult[A]):
         # wrapped on an Either monad so the user can handle success/failure as needed.
         if on_complete:
             logger.debug(f"Future[{self.future_id}] executing on_complete callback")
-            on_complete.run(value)
+            on_complete.run(future_id=self.future_id, output=value)
         return future_defined
 
 
