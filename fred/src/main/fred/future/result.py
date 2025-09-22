@@ -252,6 +252,12 @@ class FutureUndefinedInProgress(FutureResult[A]):
             value=value,
             ok=ok,
         )
+        # We could do the following to have an "on_success" behaviour:
+        # value.map(lambda v: on_complete.run(v) if on_complete else None)
+        # But that would leave out the "on_failure" behaviour and we would probably need to
+        # add specific 'on_success' and 'on_failure' callbacks to mitigate that.
+        # Instead, we just do a generic 'on_complete' callback that gets executed
+        # wrapped on an Either monad so the user can handle success/failure as needed.
         if on_complete:
             logger.debug(f"Future[{self.future_id}] executing on_complete callback")
             on_complete.run(value)
