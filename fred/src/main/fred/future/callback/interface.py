@@ -26,7 +26,7 @@ class CallbackInterface(Generic[A]):
         # TODO: Consider using a richer return type to capture more details about the execution
         #  and optionally propagate the callback return value.
         try:
-            self.execute(output=output)
+            self.execute(future_id=future_id, output=output)
             return True
         except Exception as e:
             logger.error(f"Callback execution failed on future '{future_id}': {e}")
