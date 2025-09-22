@@ -62,9 +62,14 @@ class Future(MonadInterface[A]):
         ):
         """Initializes a Future with the provided function to be executed asynchronously.
         The function is executed in a separate thread, allowing for non-blocking operations.
+
         Args:
             function (Callable[..., A]): The function to be executed asynchronously.
+            future_id (Optional[str], keyword-only): A reserved keyword-only parameter used to
+                uniquely identify this Future instance. This value is consumed by the Future
+                infrastructure and is not passed to the target function.
             **kwargs: Additional keyword arguments to be passed to the function when executed.
+                All keyword arguments except 'future_id' are forwarded to the target function.
         """
         # Create a new available future
         future = FutureUndefinedPending.auto(future_id=kwargs.pop("future_id", None))
