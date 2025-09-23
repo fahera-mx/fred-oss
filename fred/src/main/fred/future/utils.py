@@ -16,7 +16,7 @@ def pull_future_result(
     from fred.future.impl import FutureResult, FutureUndefinedInProgress, FutureUndefinedPending
 
     if timeout <= 0:
-        raise ValueError("Pull operation for future_id '{future_id}' has timed out.")
+        raise ValueError(f"Pull operation for future_id '{future_id}' has timed out.")
 
     match FutureResult.from_backend(future_id=future_id):
         case None:
