@@ -60,6 +60,7 @@ class Future(MonadInterface[A]):
     def __init__(
             self,
             function: Callable[..., A],
+            on_start: Optional[CallbackInterface] = None,
             on_complete: Optional[CallbackInterface] = None,
             **kwargs
         ):
@@ -84,6 +85,7 @@ class Future(MonadInterface[A]):
             target=lambda: future.apply(
                 function=function,
                 on_complete=on_complete,
+                on_start=on_start,
                 **kwargs
             ),
             daemon=True,

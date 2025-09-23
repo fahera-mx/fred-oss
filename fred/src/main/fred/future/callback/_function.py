@@ -1,4 +1,5 @@
 from typing import (
+    Any,
     Callable,
     TypeVar,
 )
@@ -15,5 +16,15 @@ class CallbackFunction(CallbackInterface[A]):
         self.function = function
         self.kwargs = kwargs
 
-    def execute(self, future_id: str, output: EitherMonad.Either[A]):
-        self.function(output, **self.kwargs)
+    def _on_start(self, future_id: str) -> Any:
+        return self.function(
+            future_id=future_id,
+            **self.kwargs
+        )
+
+    def _on_complete(self, future_id: str, output: EitherMonad.Either[A]) -> Any:
+        return self.function(
+            output=output,
+            future_id=future_id,
+            **self.kwargs
+        )

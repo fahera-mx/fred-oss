@@ -166,6 +166,7 @@ class FutureUndefinedPending(FutureResult[A]):
     def apply(
             self,
             function: Callable[..., A],
+            on_start: Optional[CallbackInterface] = None,
             on_complete: Optional[CallbackInterface] = None,
             **kwargs
         ) -> 'FutureDefined[A]':
@@ -187,6 +188,7 @@ class FutureUndefinedPending(FutureResult[A]):
         )
         return fip.exec(
             function=function,
+            on_start=on_start,
             on_complete=on_complete,
             **kwargs
         )
@@ -212,6 +214,7 @@ class FutureUndefinedInProgress(FutureResult[A]):
     def exec(
             self,
             function: Callable[..., A],
+            on_start: Optional[CallbackInterface] = None,
             on_complete: Optional[CallbackInterface] = None,
             fail: bool = False,
             **kwargs,
@@ -230,6 +233,11 @@ class FutureUndefinedInProgress(FutureResult[A]):
         Returns:
             FutureDefined[A]: A new instance of FutureDefined representing the completed state of the Future.
         """
+        # Execute on_start callback if provided
+        on_start_thread = (
+            logger.debug(f"Future[{self.future_id}] executing on_start callback")
+            or on_start.run(future_id=self.future_id, blocking=False)
+        ) if on_start else None
         try:
             ok = False
             match function(**kwargs):
@@ -260,7 +268,9 @@ class FutureUndefinedInProgress(FutureResult[A]):
         # wrapped on an Either monad so the user can handle success/failure as needed.
         if on_complete:
             logger.debug(f"Future[{self.future_id}] executing on_complete callback")
-            on_complete.run(future_id=self.future_id, output=value)
+            on_complete.run(future_id=self.future_id, output=value, blocking=True)
+        if on_start_thread:
+            on_start_thread.join()
         return future_defined
 
 
