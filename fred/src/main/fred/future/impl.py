@@ -223,8 +223,8 @@ class Future(MonadInterface[A]):
     def pullsync(
             cls,
             future_id: str,
-            delay: float = 0.01,
-            delay_incr: float = 0.01,
+            delay: float = 0.001,
+            delay_incr: float = 0.001,
             delay_max: float = 30,
             timeout: float = FRD_FUTURE_DEFAULT_EXPIRATION,
             on_complete: Optional[CallbackInterface] = None,

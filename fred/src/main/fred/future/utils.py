@@ -8,8 +8,8 @@ A = TypeVar("A")
 
 def pull_future_result(
         future_id: str,
-        delay: float = 0.01,
-        delay_incr: float = 0.01,
+        delay: float = 0.001,
+        delay_incr: float = 0.001,
         delay_max: float = 30,
         timeout: float = FRD_FUTURE_DEFAULT_EXPIRATION,
     ) -> A:
