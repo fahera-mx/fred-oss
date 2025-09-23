@@ -21,7 +21,7 @@ class CallbackInterface(Generic[A]):
     def _on_complete(self, future_id: str, output: EitherMonad.Either[A]):
         raise NotImplementedError
     
-    def run(self, future_id: str, blocking: bool = False, output: Optional[EitherMonad.Either[A]] = None) -> Thread:
+    def run(self, future_id: str, blocking: bool = False, output: Optional[EitherMonad.Either[A]] = None) -> Optional[Thread]:
         """Executes the callback with the provided output and handles any exceptions.
         Args:
             output (EitherMonad.Either[A]): The output to be passed to the callback.
