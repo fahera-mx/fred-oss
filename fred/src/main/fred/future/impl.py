@@ -6,6 +6,7 @@ from typing import (
 )
 
 from fred.settings import logger_manager
+from fred.future.settings import FRD_FUTURE_DEFAULT_EXPIRATION
 from fred.future.callback.interface import CallbackInterface
 from fred.monad.interface import MonadInterface
 from fred.monad.catalog import EitherMonad
@@ -217,3 +218,44 @@ class Future(MonadInterface[A]):
         Returns: Future[B]: A new Future containing the transformed result.
         """
         return self.flat_map(function=lambda value: type(self).from_value(function(value)))
+
+    @classmethod
+    def pullsync(
+            cls,
+            future_id: str,
+            delay: float = 0.01,
+            delay_incr: float = 0.01,
+            delay_max: float = 30,
+            timeout: float = FRD_FUTURE_DEFAULT_EXPIRATION,
+            on_complete: Optional[CallbackInterface] = None,
+            **kwargs
+        ) -> 'Future[A]':
+        """Pulls an existing future from the backend storage by its ID.
+        This method allows for retrieving and interacting with a future
+        that was previously created and stored in the backend.
+
+        Args:
+            future_id (str): The unique identifier of the future to be pulled.
+            delay (float): Initial delay between checks for the future's completion.
+            delay_incr (float): Incremental increase in delay after each check.
+            delay_max (float): Maximum delay between checks.
+            timeout (float): Maximum time to wait for the future to complete.
+            on_complete (Optional[CallbackInterface]): An optional callback to be executed
+                                                      when the future completes.
+            **kwargs: Additional keyword arguments to be passed to the Future constructor.
+        Returns:
+            Future[A]: A Future instance representing the pulled future.
+        """
+        from fred.future.utils import pull_future_result
+
+        return cls(
+            function=lambda: pull_future_result(
+                future_id=future_id,
+                delay=delay,
+                delay_incr=delay_incr,
+                delay_max=delay_max,
+                timeout=timeout,
+            ),
+            on_complete=on_complete,
+            **kwargs
+        )
