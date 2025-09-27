@@ -98,20 +98,16 @@ class RunnerHandler(HandlerInterface):
             future = self._runner_process(item=item, runner=runner, item_id=item_id, request_id=request_id).map(
                 lambda res: res if isinstance(res, str) else json.dumps(res, default=str)
             )
-            # Send result to response queue if specified
-            if res_queue:
-                future.map(lambda res: res_queue.add(res))
-            
             match future.wait():
                 case EitherMonad.Right(value):
                     if res_queue:
-                        logger.debug(f"Processed item with ID {item_id} and pushed result to response queue.")
+                        logger.debug(f"Processed item ID '{item_id}' on request ID '{request_id}' and pushed result to response queue.")
                         res_queue.add(value)
                 case EitherMonad.Left(error):
-                    logger.error(f"Error processing item with ID {item_id}: {error}")
+                    logger.error(f"Error processing item ID '{item_id}' on request ID '{request_id}': {error}")
                     continue
                 case _:
-                    logger.error(f"Unexpected result processing item with ID {item_id}: {future}")
+                    logger.error(f"Unexpected result processing item ID '{item_id}' on request ID '{request_id}': {future}")
                     continue
             last_processed_time = datetime_utcnow()
         return {
