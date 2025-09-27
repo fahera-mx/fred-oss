@@ -10,6 +10,9 @@ logger = logger_manager.get_logger(name=__name__)
 class PluginCatalog(enum.Enum):
     """Enum for the different plugins available in FRED."""
 
-    LOCAL = LocalPlugin.auto()
+    LOCAL = LocalPlugin
     RUNPOD = None  # Placeholder for future RunPod plugin
     LAMBDA = None  # Placeholder for future AWS Lambda plugin
+
+    def __call__(self, *args, **kwargs):
+        return self.value.auto(*args, **kwargs)
