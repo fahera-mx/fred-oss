@@ -1,19 +1,20 @@
 import uuid
 import json
 from dataclasses import dataclass
+from typing import Optional
 
+from fred.future import Future
+from fred.monad.catalog import EitherMonad
 from fred.utils.dateops import datetime_utcnow
+from fred.dao.comp.catalog import FredQueue
+from fred.worker.runner.settings import FRD_RUNNER_BACKEND
+from fred.worker.runner.backend import RunnerBackend
+from fred.worker.runner.model.catalog import RunnerModelCatalog
 from fred.worker.interface import HandlerInterface
-from fred.settings import (
-    get_environ_variable,
-    logger_manager,
-)
-from fred.worker.runner.utils import (
-    get_request_queue_name_from_payload,
-    get_response_queue_name_from_payload,
-)
+from fred.worker.runner.status import RunnerStatus
 
-from redis import Redis
+from fred.settings import logger_manager
+
 
 logger = logger_manager.get_logger(name=__name__)
 
@@ -23,36 +24,33 @@ class RunnerHandler(HandlerInterface):
     
     def __post_init__(self):
         super().__post_init__()
-        logger.info("Runpod Handler initialized using Fred-Worker interface.")
+        logger.info("Fred-Runner outer-handler initialized using Fred-Worker interface.")
 
-    def handler(self, payload: dict) -> dict:
-        # TODO: Breakdown the handler logic into smaller methods for better readability and testing
-        # E.g., loop method, process item method, signal handling method, etc.
-        lifespan = payload.get("lifetime", 3600)  # Default to 1 hour if not specified
-        timeout = payload.get("timeout", 30)  # Default to 30 seconds if not specified
-        # Get Redis connection details from payload or environment variables
-        redis_configs = {
-            "host": get_environ_variable(name="REDIS_HOST", default="localhost"),
-            "port": int(get_environ_variable(name="REDIS_PORT", default=6379)),
-            "password": get_environ_variable(name="REDIS_PASSWORD", default=None),
-            "db": int(get_environ_variable(name="REDIS_DB", default=0)),
-            "decode_responses": True,
-            **payload.pop("redis_configs", {}),
-        }
-        # Connect to Redis
-        redis = Redis(**redis_configs)
-        req_queue = get_request_queue_name_from_payload(payload=payload, keep=False) 
-        res_queue = get_response_queue_name_from_payload(payload=payload, keep=False)
-        # Handoff to target handler (i.e., runner)
-        runner_configs = payload.pop("runner_configs")
-        runner_id = runner_configs.pop("id", str(uuid.uuid4()))
-        runner = HandlerInterface.find_handler(**runner_configs)
-        logger.info(f"Runpod Redis Handler started with runner '{runner_id}' listening to Redis queue: '{req_queue}'")
-        redis.set(f"runner_status:{runner_id}", "RUNNING")
-        redis.set(f"runner_created_at:{runner_id}", datetime_utcnow().isoformat())
-        # Main runner loop to process items from Redis queue
-        # TODO: Can we make this main-loop concurrent with threads or async?
-        # TODO: Consider collecting metrics (e.g., processing time per item, total items processed, errors, etc.) and stats
+    @staticmethod 
+    def _runner_process(
+            item: dict,
+            runner: HandlerInterface,
+            item_id: str,
+            request_id: str,
+    ) -> Future[dict]:
+        logger.info(f"Processing item '{item_id}' provided by request-id: {request_id}")
+        return runner.run(
+            event={
+                "id": item_id,
+                "input": item
+            },
+            as_future=True,
+            future_id=request_id,
+        )
+
+    def _runner_loop(
+            self,
+            runner: HandlerInterface,
+            req_queue: FredQueue,
+            lifespan: int,
+            timeout: int,
+            res_queue: Optional[FredQueue] = None,
+    ) -> dict:
         start_time = datetime_utcnow()
         last_processed_time = datetime_utcnow()
         while (elapsed_seconds := (datetime_utcnow() - start_time).total_seconds()):
@@ -64,73 +62,134 @@ class RunnerHandler(HandlerInterface):
                 break
             # Fetch item from Redis queue 
             try:
-                item_str = redis.rpop(req_queue)
+                message = req_queue.pop()
+                # If no item, iterate again
+                if not message:
+                    continue
             except Exception as e:
                 logger.error(f"Error fetching item from Redis queue '{req_queue}': {e}")
                 continue
-            # If no item, iterate again
-            if not item_str:
-                continue
+            # Handle special signals
+            match message:
+                case "STOP" | "SHUTDOWN" | "TERMINATE":
+                    logger.info("Received STOP signal; exiting runner loop.")
+                    break
+                case "PING":
+                    logger.info("Received PING signal; continuing.")
+                    last_processed_time = datetime_utcnow()
+                    continue
+                case _:
+                    pass
             try:
-                # Handle special signals
-                match item_str:
-                    case "STOP" | "SHUTDOWN" | "TERMINATE":
-                        logger.info("Received STOP signal; exiting runner loop.")
-                        break
-                    case "PING":
-                        logger.info("Received PING signal; continuing.")
-                        last_processed_time = datetime_utcnow()
-                        continue
-                    case _:
-                        pass
-                # Parse item payload and extract item_id
-                item_payload = json.loads(item_str)
-                item_id = item_payload.pop("item_id") or (
-                    logger.warning("No item_id provided in payload; generating a new one using UUID5.")
-                    or str(uuid.uuid5(uuid.NAMESPACE_OID, item_str))
+                item = json.loads(message)
+                item_id = item.get("item_id") or (
+                    logger.warning("No item_id provided in item-payload; generating a new one using UUID5 hash.")
+                    or str(uuid.uuid5(uuid.NAMESPACE_OID, message))
+                )
+                # The request_id is used as the future_id for tracking purposes
+                request_id = item.get("request_id") or (
+                    logger.warning(f"No request_id provided in item-payload; using the item_id '{item_id}' instead.")
+                    or item_id
                 )
             except Exception as e:
                 logger.error(f"Error decoding or parsing item from Redis: {e}")
                 continue
-            logger.info(f"Processing item with ID: {item_id}")      
-            redis.set(f"item_status:{item_id}", "IN_PROGRESS")
-            try:
-                out_payload = runner.run(
-                    event={
-                        "id": item_id,
-                        "input": item_payload
-                    }
-                )
-                out_str = json.dumps(out_payload) if isinstance(out_payload, dict) else str(out_payload)
-                redis.set(f"item_status:{item_id}", "COMPLETED")
-                # TODO: Consider adding a TTL to the result keys (e.g., 24 hours)
-                redis.set(f"item_output:{item_id}", out_str)
-                if res_queue:
-                    redis.lpush(res_queue, out_str) 
-            except Exception as e:
-                logger.error(f"Error processing item with ID {item_id}: {e}")
-                redis.set(f"item_status:{item_id}", "FAILED")
-                redis.set(f"item_output:{item_id}", str(e))
-                continue
-            logger.info(f"Processed item with ID: {item_id}")
+            # Process item using runner and handle result
+            future = self._runner_process(item=item, runner=runner, item_id=item_id, request_id=request_id).map(
+                lambda res: res if isinstance(res, str) else json.dumps(res, default=str)
+            )
+            # Send result to response queue if specified
+            if res_queue:
+                future.map(lambda res: res_queue.add(res))
+            
+            match future.wait():
+                case EitherMonad.Right(value):
+                    if res_queue:
+                        logger.debug(f"Processed item with ID {item_id} and pushed result to response queue.")
+                        res_queue.add(value)
+                case EitherMonad.Left(error):
+                    logger.error(f"Error processing item with ID {item_id}: {error}")
+                    continue
+                case _:
+                    logger.error(f"Unexpected result processing item with ID {item_id}: {future}")
+                    continue
             last_processed_time = datetime_utcnow()
-        redis.set(f"runner_status:{runner_id}", "STOPPED")
-        pending_requests = redis.llen(req_queue)
-        if pending_requests:
-            logger.warning(f"Runner '{runner_id}' stopped with {pending_requests} pending items still in the queue '{req_queue}'.")
-            # TODO: Consider adding logic (optional/configurable) to spin up a new runner to handle pending items or notify runner-manager
-        else:
-            logger.info("Runner stopped with no pending items in the queue.")
         return {
-            "status": "completed",
-            "runner_id": runner_id,
-            "processed_at": datetime_utcnow().isoformat(),
+            "started_at": start_time.isoformat(),
+            "stopped_at": datetime_utcnow().isoformat(),
             "total_elapsed_seconds": (datetime_utcnow() - start_time).total_seconds(),
             "last_processed_at": last_processed_time.isoformat(),
             "idle_seconds": (datetime_utcnow() - last_processed_time).total_seconds(),
-            "pending_requests": pending_requests,
-            "request_queue": req_queue,
-            "response_queue": res_queue,
-            "lifespan_seconds": lifespan,
-            "timeout_seconds": timeout,
         }
+ 
+
+    def handler(self, payload: dict) -> dict:
+        # Configure the backend service abstraction (e.g., Redis)
+        runner_backend = RunnerBackend.auto(
+            service_name=payload.pop("runner_backend", None) or FRD_RUNNER_BACKEND,
+            **payload.pop("runner_backend_configs", {}),
+        )
+        # Outer handler model instance
+        spec = RunnerModelCatalog.RUNNER_SPEC.value.from_payload(payload=payload)
+        
+        # Determine request and response queues to use for this runner instance
+        req_queue = runner_backend.queue(name=spec.request_queue_name)
+        res_queue = runner_backend.queue(name=spec.response_queue_name) \
+            if spec.use_response_queue else None
+        # Get runner (inner handler) instance and ID
+        # The 'outer' handler delegates the processing of tasks to the 'inner' handler
+        # and is responsible for managing the lifecycle and updating the status of the runner
+        runner = spec.inner.get_handler()
+        runner_id = spec.runner_id
+        runner_status = runner_backend.keyval(
+            key=RunnerStatus.get_key(runner_id=runner_id)
+        )
+        logger.info(f"Starting runner with ID '{runner_id}' using request-queue '{req_queue.name}'")
+        runner_status.set(
+            value=RunnerStatus.STARTED.get_val(),
+            expire=None,
+        )
+        runner_loop = Future(
+            function=self._runner_loop,
+            runner=runner,
+            req_queue=req_queue,
+            lifespan=spec.lifetime,
+            timeout=spec.timeout,
+            res_queue=res_queue,
+            # The runner_id is used as the future_id for tracking purposes
+            future_id=runner_id,
+        )
+        runner_status.set(
+            value=RunnerStatus.RUNNING.get_val(),
+            expire=None,
+        )
+        results = {
+            "runner_id": runner_id,
+            "runner_started_at": datetime_utcnow().isoformat(),
+            "runner_pending_requests": req_queue.size(),
+        }
+        match runner_loop.wait():
+            case EitherMonad.Right(meta):
+                results["runner_status"] = "success"
+                results["metadata"] = meta
+            case EitherMonad.Left(error):
+                results["runner_status"] = "failure"
+                results["metadata"] = {
+                    "error": str(error)
+                }
+            case _:
+                results["runner_status"] = "unexpected"
+                results["metadata"] = {
+                    "error": "Unexpected result from runner loop"
+                }
+        results["pending_requests"] = pending_requests = req_queue.size()
+        runner_status.set(
+            value=RunnerStatus.STOPPED.get_val(str(pending_requests)),
+            expire=3600,  # Keep the stopped status for 1 hour
+        )
+        if pending_requests:
+            logger.warning(f"Runner '{runner_id}' stopped with {pending_requests} pending items still in the queue: '{req_queue.name}'")
+        else:
+            logger.info(f"Runner '{runner_id}' stopped with no pending items in the queue: '{req_queue.name}'")
+
+        return results
