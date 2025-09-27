@@ -70,11 +70,10 @@ class PluginInterface:
         runner_status = self.backend.keyval(
             key=RunnerStatus.get_key(runner_id=runner_id)
         )
-        self.redis.set(f"runner:{runner_id}:status", f"STARTING:{datetime_utcnow().isoformat()}")
         try:
             self._execute(spec=spec, **kwargs)
         except Exception as e:
-            runner_status.set(RunnerStatus.ERROR.get_val())
+            runner_status.set(RunnerStatus.ERROR.get_val(str(e)))
             logger.error(f"Error executing runner '{runner_id}': {e}")
             raise
         return runner_id
