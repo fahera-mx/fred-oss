@@ -65,9 +65,8 @@ class RunnerClient:
         runner_status=self._runner_backend.keyval(
                 key=RunnerStatus.get_key(runner_id=runner_id)
             )
-        
         if not (value := runner_status.get()):
-            logger.warning(f"No status found for runner_id: '{self.runner_id}'")
+            logger.warning(f"No status found for runner_id: '{runner_id}'")
             return RunnerStatus.UNDEFINED
         return RunnerStatus.parse_value(value=value)
 
