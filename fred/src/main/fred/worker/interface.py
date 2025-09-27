@@ -1,5 +1,5 @@
 import time
-from typing import Callable, Optional
+from typing import overload, Callable, Optional
 from dataclasses import dataclass, field
 
 from fred.future.impl import Future  # Should we make this import lazy?
@@ -137,6 +137,14 @@ class HandlerInterface:
         # TODO: Allow custom serialization methods
         metadata_serialized = json.dumps(self.metadata, default=str)
         return json.loads(metadata_serialized)
+
+    @overload
+    def run(self, event: dict, as_future: bool = True) -> Future[dict]:
+        ...
+
+    @overload
+    def run(self, event: dict, as_future: bool = False) -> dict:
+        ...
 
     def run(self, event: dict, as_future: bool = False) -> dict | Future[dict]:
         """Process an incoming event and return a structured response.
