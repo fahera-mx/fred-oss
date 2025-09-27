@@ -152,8 +152,10 @@ class HandlerInterface:
         The 'input' key should contain the payload to be processed.
         Args:
             event (dict): The incoming event containing 'id' and 'input'.
+            as_future (bool): If True, the processing will be done in a Future; otherwise, it will be synchronous.
         Returns:
-            dict: A structured response containing the result of processing the event.    
+            dict | Future[dict]: A structured response containing the result of processing the event.
+                If requested as a Future, returns a Future that will resolve to the response dictionary.
         """
         if as_future:
             return Future(function=lambda: self.run(event=event, as_future=False))
