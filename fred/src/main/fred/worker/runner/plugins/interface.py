@@ -26,7 +26,7 @@ class PluginInterface:
     backend: RunnerBackend
 
     @classmethod
-    def auto(cls, serivce_name: Optional[str] = None, **kwargs) -> "PluginInterface":
+    def auto(cls, service_name: Optional[str] = None, **kwargs) -> "PluginInterface":
         """Auto-instantiate the plugin interface with backend services.
         If a backend service is not provided, it will create one using configurations
         extracted from the provided keyword arguments.
@@ -36,7 +36,7 @@ class PluginInterface:
             PluginInterface: An instance of the PluginInterface with backend services.
         """
         backend = RunnerBackend.auto(
-            service_name=serivce_name or FRD_RUNNER_BACKEND,
+            service_name=service_name or FRD_RUNNER_BACKEND,
             **kwargs
         )
         return cls(backend=backend)
