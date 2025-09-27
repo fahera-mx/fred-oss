@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from fred.settings import logger_manager
 from fred.worker.runner.info import RunnerInfo
 from fred.worker.runner.handler import RunnerHandler
+from fred.worker.runner.model._runner_spec import RunnerSpec
 from fred.worker.runner.plugins.interface import PluginInterface
 
 logger = logger_manager.get_logger(name=__name__)
@@ -13,14 +14,21 @@ class LocalPlugin(PluginInterface):
 
     def _execute(
             self,
-            runner_info: RunnerInfo,
-            outer_handler: RunnerHandler,
+            spec: RunnerSpec,
             **kwargs
         ):
-        """Execute the runner locally using the provided outer handler.
+        """Execute the runner locally by directly invoking the handler's run method.
+        This method bypasses any queuing mechanism and runs the handler in the current process.
         Args:
-            runner_info (RunnerInfo): Information about the runner to execute.
-            outer_handler (RunnerHandler): The outer handler to use for execution.
-            **kwargs: Additional keyword arguments to pass to the execution method implemented by the subclass.
+            spec (RunnerSpec): The specification of the runner to execute.
+            **kwargs: Additional keyword arguments that may be used for execution.
         """
-        outer_handler.run(event=runner_info.get_start_event(**kwargs))
+        outer_handler_classname = kwargs.pop("outer_handler_classname", "RunnerHandler")
+        outer_handler_classpath = kwargs.pop("outer_handler_classpath", "fred.worker.runner.handler")
+        outer_handler_init_kwargs = kwargs.pop("outer_handler_init_kwargs", {})
+        outer_hander = RunnerHandler.find_handler(
+            handler_classname=outer_handler_classname,
+            import_pattern=outer_handler_classpath,
+            **outer_handler_init_kwargs,
+        )
+        outer_hander.run(event=spec.as_event(), as_future=False)
