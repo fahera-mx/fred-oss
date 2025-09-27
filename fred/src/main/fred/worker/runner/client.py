@@ -30,7 +30,7 @@ class RunnerClient:
     def auto(
             cls,
             queue_slug: Optional[str] = None,
-            serivce_name: Optional[str] = None,
+            service_name: Optional[str] = None,
             **kwargs
         ) -> "RunnerClient":
         queue_slug = queue_slug or kwargs.pop("queue_slug", None) or (
@@ -40,7 +40,7 @@ class RunnerClient:
         queue_name_request = FRD_RUNNER_REQUEST_QUEUE or f"req:{queue_slug}"
         queue_name_response = FRD_RUNNER_RESPONSE_QUEUE or f"res:{queue_slug}"
         runner_backend = RunnerBackend.auto(
-            service_name=serivce_name or FRD_RUNNER_BACKEND,
+            service_name=service_name or FRD_RUNNER_BACKEND,
             **kwargs
         )
         return cls(
