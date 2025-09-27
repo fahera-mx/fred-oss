@@ -1,101 +1,141 @@
-import uuid
-import json
+import time
 from dataclasses import dataclass
+from typing import Optional
 
-from fred.settings import (
-    get_environ_variable,
-    logger_manager,
+from fred.future import Future
+from fred.future.result import FutureResult
+from fred.dao.comp.catalog import FredQueue
+from fred.worker.runner.status import RunnerStatus
+from fred.worker.runner.signal import RunnerSignal
+from fred.worker.runner.backend import RunnerBackend
+from fred.worker.runner.model.catalog import RunnerModelCatalog
+from fred.worker.runner.settings import (
+    FRD_RUNNER_BACKEND,
+    FRD_RUNNER_REQUEST_QUEUE,
+    FRD_RUNNER_RESPONSE_QUEUE,
 )
-from fred.worker.runner.utils import (
-    get_request_queue_name_from_payload,
-    get_response_queue_name_from_payload,
-    get_redis_configs_from_payload,
-)
-
-from redis import Redis
+from fred.settings import logger_manager
 
 logger = logger_manager.get_logger(name=__name__)
 
 
 @dataclass(frozen=True, slots=True)
 class RunnerClient:
-    instance: Redis
-    req_queue: str
-    res_queue: str
+    _runner_backend: RunnerBackend
+    req_queue: FredQueue
+    res_queue: FredQueue
+
 
     @classmethod
-    def auto(cls, **kwargs) -> "RunnerClient":
-        redis_configs = get_redis_configs_from_payload(payload=kwargs, keep=False)
-        redis_instance = Redis(**redis_configs)
-        req_queue = get_request_queue_name_from_payload(payload=kwargs, keep=False) 
-        res_queue = get_response_queue_name_from_payload(payload=kwargs, keep=False) or (
-            logger.warning("Redis response queue not specified; defaulting to inferring pattern.")
-            or f"res:{req_queue.split(':')[-1]}"
+    def auto(
+            cls,
+            queue_slug: Optional[str] = None,
+            serivce_name: Optional[str] = None,
+            **kwargs
+        ) -> "RunnerClient":
+        queue_slug = queue_slug or kwargs.pop("queue_slug", None) or (
+            logger.warning("Queue slug not specified; defaulting to: 'demo'")
+            or "demo"
         )
-        logger.info(f"Connecting to Redis, using request queue '{req_queue}' and response queue '{res_queue}'.")
+        queue_name_request = FRD_RUNNER_REQUEST_QUEUE or f"req:{queue_slug}"
+        queue_name_response = FRD_RUNNER_RESPONSE_QUEUE or f"res:{queue_slug}"
+        runner_backend = RunnerBackend.auto(
+            service_name=serivce_name or FRD_RUNNER_BACKEND,
+            **kwargs
+        )
         return cls(
-            instance=redis_instance,
-            req_queue=req_queue,
-            res_queue=res_queue,
+            _runner_backend=runner_backend,
+            req_queue=runner_backend.queue(name=queue_name_request),
+            res_queue=runner_backend.queue(name=queue_name_response),
         )
 
     @property
     def PING(self):
-        return self.signal("PING")
+        return self.signal(RunnerSignal.PING)
 
     @property
     def STOP(self):
-        return self.signal("STOP")
+        return self.signal(RunnerSignal.STOP)
 
-    def signal(self, signal: str):
-        # TODO: Validate signals via enum
-        self.instance.lpush(self.req_queue, signal)
+    def signal(self, signal: str | RunnerSignal):
+        signal = RunnerSignal[signal.upper()] if isinstance(signal, str) else signal
+        return signal.send(self.req_queue)
 
-    def send(self, item: dict, uuid_hash: bool = False) -> str:
-        item_id = item.get("item_id")
-        item_str = json.dumps(item)
-        if not item_id:
-            logger.warning("Item does not have 'item_id'; assigning a UUID based on the hash.")
-            item["item_id"] = item_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, item_str)) \
-                if uuid_hash else str(uuid.uuid4())
-            item_str = json.dumps(item)
-        self.instance.lpush(self.req_queue, item_str)
-        self.instance.set(f"item_status:{item_id}", "IN_QUEUE")
-        return item_id
+    def runner_status(self, runner_id: str) -> RunnerStatus:
+        runner_status=self._runner_backend.keyval(
+                key=RunnerStatus.get_key(runner_id=runner_id)
+            )
+        
+        if not (value := runner_status.get()):
+            logger.warning(f"No status found for runner_id: '{self.runner_id}'")
+            return RunnerStatus.UNDEFINED
+        return RunnerStatus.parse_value(value=value)
+
+    def send(
+            self,
+            item: dict,
+            req_uuid_hash: bool = False,
+            item_uuid_hash: bool = False,
+    ) -> str:
+        item_instance = RunnerModelCatalog.ITEM.value.uuid(payload=item, uuid_hash=item_uuid_hash)
+        request = item_instance.as_request(
+            use_hash=req_uuid_hash,
+            request_id=item.get("request_id"),
+        )
+        request.dispatch(request_queue=self.req_queue)
+        return request.request_id
     
-    def fetch_status(self, item_id: str) -> str | None:
-        status_raw = self.instance.get(f"item_status:{item_id}")
-        if not status_raw:
-            logger.info(f"No status found for item_id '{item_id}'.")
-            return None
-        return status_raw.decode("utf-8")
+    @staticmethod
+    def fetch_status(request_id: str) -> Optional[str]:
+        return FutureResult._get_status_key(future_id=request_id).get()
 
-    def fetch_result(self, item_id: str, blocking: bool = False) -> dict | None:
-        match self.fetch_status(item_id=item_id):
-            case None:
-                logger.info(f"No status found for item_id '{item_id}'.")
-                return None
-            case "IN_QUEUE" | "PROCESSING":
-                if blocking:
-                    logger.info(f"Blocking until item '{item_id}' is completed.")
-                    while (status := self.fetch_status(item_id=item_id)) in ("IN_QUEUE", "PROCESSING"):
-                        continue
-                else:
-                    logger.info(f"Item '{item_id}' is still in progress (current status: '{self.fetch_status(item_id=item_id)}').")
-                    return None
-            case "FAILED":
-                logger.error(f"Item '{item_id}' processing failed.")
-                return None
-            case "COMPLETED":
-                result_raw = self.instance.get(f"item_output:{item_id}")
-                if result_raw:
-                    try:
-                        return json.loads(result_raw)
-                    except json.JSONDecodeError as e:
-                        logger.error(f"Error decoding JSON result for item_id '{item_id}': {e}")
-                        return None
-                else:
-                    logger.error(f"No result found for item_id '{item_id}'.")
-                    return None
-            case status:
-                logger.warning(f"Item '{item_id}' has unrecognized status '{status}'. Proceeding to fetch result.")
+    def pullsync(
+            self,
+            request_id: str,
+            retry_sync: int = 10,
+            retry_delay: float = 0.5,
+            **kwargs,
+    ) -> Future:
+        # TODO: Once the broadcast method is implemented, we can add a warning notice regarding
+        # the pullsync metho adding extra load to the backend service
+        future = Future(
+            function=self._is_ready_for_pullsync,
+            request_id=request_id,
+            retry_sync=retry_sync,
+            retry_delay=retry_delay,
+            fail=True,  # Always fail inside the future to propagate the exception
+        )
+        return future.flat_map(
+            lambda _: Future.pullsync(future_id=request_id, **kwargs)
+        )
+
+    def _is_ready_for_pullsync(
+            self,
+            request_id: str,
+            retry_sync: int = 10,
+            retry_delay: float = 0.5,
+            fail: bool = False,
+    ) -> bool:
+        if not self.fetch_status(request_id=request_id):
+            logger.info(f"No status found for request_id '{request_id}'")
+            retry_kwargs = {
+                "request_id": request_id,
+                "retry_sync": retry_sync - 1,
+                "retry_delay": retry_delay,
+                "fail": fail,
+            }
+            if retry_sync:
+                time.sleep(retry_delay)
+                return self._is_ready_for_pullsync(**retry_kwargs)
+            elif fail:
+                logger.error(f"Failed to fetch status for request_id '{request_id}' after retries.")
+                raise ValueError(f"No status found for request_id '{request_id}'")
+            else:
+                return False
+        return True
+
+    def fetch_result(self, request_id: str, now: bool = False, timeout: Optional[float] = None) -> Optional[dict]:
+        future = self.pullsync(request_id=request_id)
+        if now:
+            return future.getwhatevernow()
+        return future.wait_and_resolve(timeout=timeout)
