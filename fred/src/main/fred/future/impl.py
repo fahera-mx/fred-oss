@@ -146,6 +146,20 @@ class Future(MonadInterface[A]):
             case _:
                 raise TypeError("Unknown FutureResult type")
 
+    def getwhatevernow(self) -> Optional[EitherMonad.Either[A]]:
+        """Gets the current result of the future without waiting.
+        If the future is not yet completed, return None (YOLO).
+        If the future is completed, returns the result as an Either monad.
+
+        Returns:
+            Either[A]: An Either monad containing the result or exception.
+        """
+        match self._result:
+            case FutureDefined(value=value):
+                return value
+            case _:
+                return None
+
     @property
     def state(self) -> Optional[str]:
         """Returns the current state of the future as a string.
