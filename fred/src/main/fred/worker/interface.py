@@ -139,14 +139,14 @@ class HandlerInterface:
         return json.loads(metadata_serialized)
 
     @overload
-    def run(self, event: dict, as_future: bool = True) -> Future[dict]:
+    def run(self, event: dict, as_future: bool = True, future_id: Optional[str] = None) -> Future[dict]:
         ...
 
     @overload
-    def run(self, event: dict, as_future: bool = False) -> dict:
+    def run(self, event: dict, as_future: bool = False, future_id: Optional[str] = None) -> dict:
         ...
 
-    def run(self, event: dict, as_future: bool = False) -> dict | Future[dict]:
+    def run(self, event: dict, as_future: bool = False, future_id: Optional[str] = None) -> dict | Future[dict]:
         """Process an incoming event and return a structured response.
         The event is expected to be a dictionary with at least an 'id' and 'input' keys.
         The 'input' key should contain the payload to be processed.
@@ -158,7 +158,7 @@ class HandlerInterface:
                 If requested as a Future, returns a Future that will resolve to the response dictionary.
         """
         if as_future:
-            return Future(function=lambda: self.run(event=event, as_future=False))
+            return Future(function=lambda: self.run(event=event, as_future=False), future_id=future_id)
         # Extract payload and event ID
         payload = event.get("input", {})
         job_event_identifier = event.get("id")
