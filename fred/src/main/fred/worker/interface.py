@@ -2,6 +2,7 @@ import time
 from typing import Callable, Optional
 from dataclasses import dataclass, field
 
+from fred.future.impl import Future  # Should we make this import lazy?
 from fred.utils.dateops import datetime_utcnow
 from fred.settings import (
     get_environ_variable,
@@ -137,7 +138,7 @@ class HandlerInterface:
         metadata_serialized = json.dumps(self.metadata, default=str)
         return json.loads(metadata_serialized)
 
-    def run(self, event: dict) -> dict:
+    def run(self, event: dict, as_future: bool = False) -> dict | Future[dict]:
         """Process an incoming event and return a structured response.
         The event is expected to be a dictionary with at least an 'id' and 'input' keys.
         The 'input' key should contain the payload to be processed.
@@ -146,6 +147,8 @@ class HandlerInterface:
         Returns:
             dict: A structured response containing the result of processing the event.    
         """
+        if as_future:
+            return Future(function=lambda: self.run(event=event, as_future=False))
         # Extract payload and event ID
         payload = event.get("input", {})
         job_event_identifier = event.get("id")
