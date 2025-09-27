@@ -26,9 +26,9 @@ class LocalPlugin(PluginInterface):
         outer_handler_classname = kwargs.pop("outer_handler_classname", "RunnerHandler")
         outer_handler_classpath = kwargs.pop("outer_handler_classpath", "fred.worker.runner.handler")
         outer_handler_init_kwargs = kwargs.pop("outer_handler_init_kwargs", {})
-        outer_hander = RunnerHandler.find_handler(
+        outer_handler = RunnerHandler.find_handler(
             handler_classname=outer_handler_classname,
             import_pattern=outer_handler_classpath,
             **outer_handler_init_kwargs,
         )
-        outer_hander.run(event=spec.as_event(), as_future=False)
+        outer_handler.run(event=spec.as_event(), as_future=False)
