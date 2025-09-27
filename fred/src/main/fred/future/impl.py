@@ -148,11 +148,11 @@ class Future(MonadInterface[A]):
 
     def getwhatevernow(self) -> Optional[EitherMonad.Either[A]]:
         """Gets the current result of the future without waiting.
-        If the future is not yet completed, return None (YOLO).
+        If the future is not yet completed, returns None.
         If the future is completed, returns the result as an Either monad.
 
         Returns:
-            Either[A]: An Either monad containing the result or exception.
+            Optional[Either[A]]: None if the future is not completed; otherwise, an Either monad containing the result or exception.
         """
         match self._result:
             case FutureDefined(value=value):
