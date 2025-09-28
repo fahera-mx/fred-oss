@@ -36,7 +36,7 @@ class RunnerRouterMethods:
         plugin_name: str = payload.pop("plugin", "LOCAL")
         wait_for_exec: bool = payload.pop("wait_for_exec", False)
         # Create the RunnerSpec from the provided payload
-        # TODO: Instead on dependening on parsing a dict... Can we implement a base-model to facilitate fast-api validation?
+        # TODO: Instead on depending on parsing a dict... Can we implement a base-model to facilitate fast-api validation?
         runner_spec = RunnerModelCatalog.RUNNER_SPEC.value.from_payload(payload=payload)
         # Instantiate the plugin and execute the runner
         plugin = PluginCatalog[plugin_name.upper()]()
