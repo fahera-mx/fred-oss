@@ -3,8 +3,6 @@ from fastapi.security import APIKeyHeader
 
 from fred.worker.runner.rest.settings import FRD_RESTAPI_TOKEN
 
-
-
 async def verify_key(
         api_key_header: str = Security(
             APIKeyHeader(
