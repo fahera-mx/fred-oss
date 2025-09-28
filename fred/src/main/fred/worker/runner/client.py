@@ -92,7 +92,8 @@ class RunnerClient:
             self,
             request_id: str,
             retry_sync: int = 10,
-            retry_delay: float = 0.5,
+            retry_delay: float = 0.2,
+            retry_backoff_rate: float = 0.1,
             **kwargs,
     ) -> Future:
         # TODO: Once the broadcast method is implemented, we can add a warning notice regarding
@@ -102,6 +103,7 @@ class RunnerClient:
             request_id=request_id,
             retry_sync=retry_sync,
             retry_delay=retry_delay,
+            retry_backoff_rate=retry_backoff_rate,
             fail=True,  # Always fail inside the future to propagate the exception
         )
         return future.flat_map(
@@ -112,7 +114,8 @@ class RunnerClient:
             self,
             request_id: str,
             retry_sync: int = 10,
-            retry_delay: float = 0.5,
+            retry_delay: float = 0.2,
+            retry_backoff_rate: float = 0.1,
             fail: bool = False,
     ) -> bool:
         if not self.fetch_status(request_id=request_id):
@@ -120,7 +123,8 @@ class RunnerClient:
             retry_kwargs = {
                 "request_id": request_id,
                 "retry_sync": retry_sync - 1,
-                "retry_delay": retry_delay,
+                "retry_delay": retry_delay * (1 + retry_backoff_rate),  # Exponential backoff
+                "retry_backoff_rate": retry_backoff_rate,
                 "fail": fail,
             }
             if retry_sync:

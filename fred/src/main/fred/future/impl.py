@@ -239,9 +239,9 @@ class Future(MonadInterface[A]):
     def pullsync(
             cls,
             future_id: str,
-            delay: float = 0.001,
-            delay_incr: float = 0.001,
-            delay_max: float = 30,
+            retry_delay: float = 0.2,
+            retry_backoff_rate: float = 0.1,
+            retry_delay_max: float = 15,
             timeout: float = FRD_FUTURE_DEFAULT_EXPIRATION,
             on_complete: Optional[CallbackInterface] = None,
             **kwargs
@@ -252,9 +252,9 @@ class Future(MonadInterface[A]):
 
         Args:
             future_id (str): The unique identifier of the future to be pulled.
-            delay (float): Initial delay between checks for the future's completion.
-            delay_incr (float): Incremental increase in delay after each check.
-            delay_max (float): Maximum delay between checks.
+            retry_delay (float): Initial delay between checks for the future's completion.
+            retry_backoff_rate (float): Incremental increase in delay after each check.
+            retry_delay_max (float): Maximum delay between checks.
             timeout (float): Maximum time to wait for the future to complete.
             on_complete (Optional[CallbackInterface]): An optional callback to be executed
                                                       when the future completes.
@@ -267,9 +267,9 @@ class Future(MonadInterface[A]):
         return cls(
             function=lambda: pull_future_result(
                 future_id=future_id,
-                delay=delay,
-                delay_incr=delay_incr,
-                delay_max=delay_max,
+                retry_delay=retry_delay,
+                retry_backoff_rate=retry_backoff_rate,
+                retry_delay_max=retry_delay_max,
                 timeout=timeout,
             ),
             on_complete=on_complete,
