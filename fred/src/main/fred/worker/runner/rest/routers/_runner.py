@@ -58,7 +58,7 @@ class RunnerRouterMethods:
         # Instantiate the plugin and execute the runner
         plugin = PluginCatalog[plugin_name.upper()]()
         return {
-            "runner_id": plugin.execute(runner_spec, wait_for_exec=wait_for_exec).runner_id,
+            "runner_id": plugin.execute(runner_spec, wait_for_exec=wait_for_exec, **payload).runner_id,
             "queue_slug": runner_spec.queue_slug,
         }
     
