@@ -4,7 +4,7 @@ from typing import Optional
 
 from fred.future import Future
 from fred.settings import logger_manager
-from fred.utils.dateops import datetime_utcnow
+from fred.monad.catalog import EitherMonad
 from fred.worker.runner.status import RunnerStatus
 from fred.worker.runner.model._runner_spec import RunnerSpec
 from fred.worker.runner.backend import RunnerBackend
@@ -55,7 +55,7 @@ class PluginInterface:
             self,
             spec: RunnerSpec,
             **kwargs
-        ) -> str:
+        ) -> dict:
         """Wrapper method to handle execution and include error logging.
 
         Since we don't control the implementation of the _execute method in subclasses, we
@@ -66,17 +66,17 @@ class PluginInterface:
             outer_handler (RunnerHandler): The outer handler to use for execution.
             **kwargs: Additional keyword arguments to pass to the execution method implemented by the subclass.
         """
-        runner_id = spec.runner_id
+        response = {"runner_id": spec.runner_id}
         runner_status = self.backend.keyval(
-            key=RunnerStatus.get_key(runner_id=runner_id)
+            key=RunnerStatus.get_key(runner_id=spec.runner_id)
         )
         try:
-            self._execute(spec=spec, **kwargs)
+            response["plugin_output"] = self._execute(spec=spec, **kwargs)
         except Exception as e:
             runner_status.set(RunnerStatus.ERROR.get_val(str(e)))
-            logger.error(f"Error executing runner '{runner_id}': {e}")
+            logger.error(f"Error executing runner '{spec.runner_id}': {e}")
             raise
-        return runner_id
+        return response
     
     def execute(
             self,
@@ -101,7 +101,12 @@ class PluginInterface:
             logger.info(f"Monitoring disabled for runner '{runner_id}'.")
         if wait_for_exec:
             logger.info(f"Waiting for execution of runner '{runner_id}' to complete.")
-            future_exec.wait(timeout=timeout)
+            match future_exec.wait(timeout=timeout):
+                case EitherMonad.Right(value):
+                    logger.info(f"Execution of runner '{runner_id}' completed successfully.")
+                    logger.debug(f"Execution of runner '{runner_id}' output: {value}")
+                case EitherMonad.Left(error):
+                    logger.error(f"Execution of runner '{runner_id}' failed with error: {error}")
         if future_monitor and wait_for_monitor:
             future_monitor.wait(timeout=timeout)
         return PluginExecutionOutput(
