@@ -73,11 +73,11 @@ class RunnerSpec(ModelInterface):
             "timeout": self.timeout,
         }
     
-    def as_event(self) -> dict:
-        return {
-            "id": self.runner_id,
-            "input": self.as_dict(),
-        }
+    def as_event(self, drop_id: bool = False) -> dict:
+        event = {"input": self.as_dict()}
+        if not drop_id:
+            event["id"] = self.runner_id
+        return event
     
     @property
     def request_queue_name(self) -> str:
