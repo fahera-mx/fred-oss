@@ -104,7 +104,7 @@ class RunnerClient:
                 retry_delay=retry_delay,
                 retry_backoff_rate=retry_backoff_rate,
                 # Always fail in pullsync to raise an exception if not ready.
-                # In addition, this will be catched by the Future to propagate the exception.
+                # In addition, this will be caught by the Future to propagate the exception.
                 fail=True,
         ):
             raise ValueError(f"The provided request_id '{request_id}' is not ready for pullsync.")
