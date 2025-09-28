@@ -64,7 +64,7 @@ class RunnerRouterMethods:
     
     def runner_execute(self, payload: dict) -> dict:
         from fred.worker.runner.model.catalog import RunnerModelCatalog
-        
+
         request_id = payload.pop("request_id", None)
         queue_slug = payload.pop("queue_slug", None) or (
             logger.error("No 'queue_slug' value provided; defaulting to 'demo'.")
