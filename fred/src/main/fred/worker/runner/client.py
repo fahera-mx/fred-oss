@@ -88,6 +88,34 @@ class RunnerClient:
     def fetch_status(request_id: str) -> Optional[str]:
         return FutureResult._get_status_key(future_id=request_id).get()
 
+    def _pullsync(
+            self,
+            request_id: str,
+            retry_sync: int = 10,
+            retry_delay: float = 0.2,
+            retry_backoff_rate: float = 0.1,
+            **kwargs,
+    ):
+        from fred.future.utils import pull_future_result
+
+        if not self._is_ready_for_pullsync(
+                request_id=request_id,
+                retry_sync=retry_sync,
+                retry_delay=retry_delay,
+                retry_backoff_rate=retry_backoff_rate,
+                # Always fail in pullsync to raise an exception if not ready.
+                # In addition, this will be catched by the Future to propagate the exception.
+                fail=True,
+        ):
+            raise ValueError(f"The provided request_id '{request_id}' is not ready for pullsync.")
+
+        return pull_future_result(
+            future_id=request_id,
+            retry_delay=retry_delay,
+            retry_backoff_rate=retry_backoff_rate,
+            **kwargs
+        )
+
     def pullsync(
             self,
             request_id: str,
@@ -96,18 +124,13 @@ class RunnerClient:
             retry_backoff_rate: float = 0.1,
             **kwargs,
     ) -> Future:
-        # TODO: Once the broadcast method is implemented, we can add a warning notice regarding
-        # the pullsync metho adding extra load to the backend service
-        future = Future(
-            function=self._is_ready_for_pullsync,
+        return Future(
+            function=self._pullsync,
             request_id=request_id,
             retry_sync=retry_sync,
             retry_delay=retry_delay,
             retry_backoff_rate=retry_backoff_rate,
-            fail=True,  # Always fail inside the future to propagate the exception
-        )
-        return future.flat_map(
-            lambda _: Future.pullsync(future_id=request_id, **kwargs)
+            **kwargs
         )
 
     def _is_ready_for_pullsync(
