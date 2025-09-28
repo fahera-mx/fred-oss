@@ -1,9 +1,11 @@
 from dataclasses import dataclass
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 
 from fred.settings import logger_manager, get_environ_variable
+from fred.worker.runner.rest.settings import FRD_RESTAPI_TOKEN
 from fred.worker.runner.rest.routers.catalog import RouterCatalog
+from fred.worker.runner.rest.auth import verify_key
 
 logger = logger_manager.get_logger(name=__name__)
 
@@ -39,6 +41,9 @@ class RunnerServer:
                 if (name := router.strip())
             ]
         # Create FastAPI instance
+        kwargs["dependencies"] = kwargs.get("dependencies", []) + [
+            Depends(verify_key),
+        ]
         app_instance = FastAPI(**kwargs)
         return cls(
             app=app_instance,
