@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
 from fred.settings import logger_manager
-from fred.worker.runner.info import RunnerInfo
 from fred.worker.runner.handler import RunnerHandler
 from fred.worker.runner.model._runner_spec import RunnerSpec
 from fred.worker.runner.plugins.interface import PluginInterface
