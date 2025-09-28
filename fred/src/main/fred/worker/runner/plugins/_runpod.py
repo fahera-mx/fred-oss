@@ -49,7 +49,7 @@ class RunpodPlugin(PluginInterface):
         if not RUNPOD_KEY:
             raise ValueError("RUNPOD_KEY is required to execute the runner on RunPod.")
         if not RUNPOD_SERVERLESS_ID:
-            raise ValueError("RUNPOD_SERVERLESS_ENDPOINT is required to execute the runner on RunPod.")
+            raise ValueError("RUNPOD_SERVERLESS_ID is required to execute the runner on RunPod.")
         if RUNPOD_SERVERLESS_ENDPOINT not in ["run", "runsync"]:
             # Right now we only support these two endpoints... We might add more in the future.
             # https://docs.runpod.io/serverless/endpoints/send-requests 
