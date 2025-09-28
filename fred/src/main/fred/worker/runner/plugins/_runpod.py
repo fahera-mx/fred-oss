@@ -35,7 +35,7 @@ class RunpodPlugin(PluginInterface):
         )
         RUNPOD_URL = (
             kwargs.get("runpod_url")
-            or get_environ_variable(name="RUNPOD_URL", default="https://api.runpod.io/v2")
+            or get_environ_variable(name="RUNPOD_URL", default="https://api.runpod.ai/v2")
         )
         RUNPOD_SERVERLESS_ID = (
             kwargs.get("runpod_serverless_id")
@@ -71,6 +71,7 @@ class RunpodPlugin(PluginInterface):
             headers=headers,
         )
         return {
+            "target_url": target_url,
             "spec_created_at": spec.created_at,
             "status_code": response.status_code,
             "response": response.json(),
