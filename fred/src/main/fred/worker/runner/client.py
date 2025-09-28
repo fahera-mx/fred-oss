@@ -123,7 +123,7 @@ class RunnerClient:
             retry_kwargs = {
                 "request_id": request_id,
                 "retry_sync": retry_sync - 1,
-                "retry_delay": retry_delay + retry_delay * retry_backoff_rate,  # Incremental backoff
+                "retry_delay": retry_delay * (1 + retry_backoff_rate),  # Exponential backoff
                 "retry_backoff_rate": retry_backoff_rate,
                 "fail": fail,
             }

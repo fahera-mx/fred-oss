@@ -29,7 +29,7 @@ def pull_future_result(
             # Increase the delay for the next check to avoid busy waiting (exponential backoff) capped at delay_max
             return pull_future_result(
                 future_id=future_id,
-                retry_delay=(retry_delay + retry_delay * retry_backoff_rate) if retry_delay < retry_delay_max else retry_delay_max,
+                retry_delay=min(retry_delay * (1 + retry_backoff_rate), retry_delay_max),
                 retry_backoff_rate=retry_backoff_rate,
                 retry_delay_max=retry_delay_max,
                 # TODO: Consider using a more precise timeout mechanism based on elapsed time
