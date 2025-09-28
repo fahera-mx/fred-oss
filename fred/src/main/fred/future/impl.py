@@ -228,12 +228,20 @@ class Future(MonadInterface[A]):
     def map(self, function: Callable[[A], B]) -> 'Future[B]':
         """Applies a function to the result of the future, returning a new future.
         This method allows for transforming the result of a future without blocking.
+
+        Original implementation:
+        return self.flat_map(function=lambda value: type(self).from_value(function(value)))
+
+        However, that implementation would create an intermediate Future just to
+        hold the transformed value, which is unnecessary overhead. Instead, we can directly create a new Future
+        that applies the transformation function to the result of the current future.
+
         Args:
             function (Callable[[A], B]): A function that takes the result of the current future
                                           and returns a new value.
         Returns: Future[B]: A new Future containing the transformed result.
         """
-        return self.flat_map(function=lambda value: type(self).from_value(function(value)))
+        return Future(function=lambda: function(self.wait_and_resolve()))
 
     @classmethod
     def pullsync(
