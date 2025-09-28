@@ -92,7 +92,7 @@ class RunnerClient:
             self,
             request_id: str,
             retry_sync: int = 10,
-            retry_delay: float = 0.5,
+            retry_delay: float = 0.2,
             retry_backoff_rate: float = 0.1,
             **kwargs,
     ) -> Future:
@@ -114,7 +114,7 @@ class RunnerClient:
             self,
             request_id: str,
             retry_sync: int = 10,
-            retry_delay: float = 0.5,
+            retry_delay: float = 0.2,
             retry_backoff_rate: float = 0.1,
             fail: bool = False,
     ) -> bool:
