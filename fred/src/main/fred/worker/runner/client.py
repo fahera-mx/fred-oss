@@ -137,8 +137,8 @@ class RunnerClient:
                 return False
         return True
 
-    def fetch_result(self, request_id: str, now: bool = False, timeout: Optional[float] = None) -> Optional[dict]:
-        future = self.pullsync(request_id=request_id)
+    def fetch_result(self, request_id: str, now: bool = False, timeout: Optional[float] = None, **kwargs) -> Optional[dict]:
+        future = self.pullsync(request_id=request_id, **kwargs)
         if now:
             return future.getwhatevernow()
         return future.wait_and_resolve(timeout=timeout)
