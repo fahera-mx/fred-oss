@@ -30,4 +30,4 @@ class LocalPlugin(PluginInterface):
             import_pattern=outer_handler_classpath,
             **outer_handler_init_kwargs,
         )
-        outer_handler.run(event=spec.as_event(), as_future=False)
+        return outer_handler.run(event=spec.as_event(), as_future=False)
