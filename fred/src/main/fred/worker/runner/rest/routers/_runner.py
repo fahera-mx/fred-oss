@@ -58,8 +58,10 @@ class RunnerRouterMethods:
         runner_spec = RunnerModelCatalog.RUNNER_SPEC.value.from_payload(payload=payload)
         # Instantiate the plugin and execute the runner
         plugin = PluginCatalog[plugin_name.upper()]()
+        output = plugin.execute(runner_spec, wait_for_exec=wait_for_exec, **payload)
         return {
-            "runner_id": plugin.execute(runner_spec, wait_for_exec=wait_for_exec, **payload).runner_id,
+            "runner_id": output.runner_id,
+            "future_id": output.future_exec.future_id,
             "queue_slug": runner_spec.queue_slug,
         }
     
