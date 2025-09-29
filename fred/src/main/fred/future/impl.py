@@ -289,7 +289,6 @@ class Future(MonadInterface[A]):
             on_complete=on_complete,
             **kwargs
         )
-        
     def lineage(self) -> list[str]:
         """Retrieves the lineage of the future, tracing back through its parent futures.
         This method is useful for debugging and understanding the sequence of computations
