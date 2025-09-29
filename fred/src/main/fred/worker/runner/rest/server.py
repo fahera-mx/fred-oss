@@ -3,7 +3,10 @@ from dataclasses import dataclass
 from fastapi import FastAPI, Depends
 
 from fred.settings import logger_manager, get_environ_variable
-from fred.worker.runner.rest.settings import FRD_RESTAPI_TOKEN
+from fred.worker.runner.rest.settings import (
+    FRD_RESTAPI_HOST,
+    FRD_RESTAPI_PORT,
+)
 from fred.worker.runner.rest.routers.catalog import RouterCatalog
 from fred.worker.runner.rest.auth import verify_key
 
@@ -73,8 +76,8 @@ class RunnerServer:
         import uvicorn
 
         server_kwargs = {
-            "host": "localhost",
-            "port": 8000,
+            "host": kwargs.pop("host", FRD_RESTAPI_HOST),
+            "port": int(kwargs.pop("port", FRD_RESTAPI_PORT)),
             "log_level": "info",
             **kwargs,
         }
