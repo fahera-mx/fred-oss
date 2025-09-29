@@ -4,6 +4,7 @@ fire==0.7.1
 psutil==7.0.0
 # Fred Worker/Runner Infra
 redis==6.4.0
+requests==2.32.5
 fastapi==0.116.2
 uvicorn[standard]==0.35.0
 # Databricks Runtime: 16.4 LTS (Python 3.12.3)
