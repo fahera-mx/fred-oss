@@ -76,7 +76,7 @@ class RunnerServer:
         import uvicorn
 
         server_kwargs = {
-            "host": kwargs.pop("host",FRD_RESTAPI_HOST),
+            "host": kwargs.pop("host", FRD_RESTAPI_HOST),
             "port": int(kwargs.pop("port", FRD_RESTAPI_PORT)),
             "log_level": "info",
             **kwargs,
