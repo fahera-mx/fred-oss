@@ -79,6 +79,7 @@ class FutureResult(Generic[A], FutureBackend.infer_backend()):
     It uses a key-value store to persist the state and result of the Future, allowing for
     retrieval and management of asynchronous tasks."""
     future_id: str
+    parent_id: Optional[str]
 
     @staticmethod
     def _get_future_keyname(future_id: str) -> str:
@@ -131,7 +132,24 @@ class FutureResult(Generic[A], FutureBackend.infer_backend()):
 
     @classmethod
     def from_backend(cls, future_id: str) -> Optional['FutureResult[A]']:
-        return FutureResult(future_id=future_id)._from_backend()
+        return FutureResult(future_id=future_id, parent_id=None)._from_backend()
+
+    @property
+    def _pre(self) -> Optional['FutureResult']:
+        if not self.parent_id:
+            return None
+        return FutureResult.from_backend(future_id=self.parent_id)
+
+    def _lineage(self) -> list[str]:
+        if not self.parent_id:
+            return [self.future_id]
+        if not (parent := self._pre):
+            logger.warning(
+                f"Cannot retrieve full lineage for Future[{self.future_id}] "
+                f"due to missing parent_id '{self.parent_id}'"
+            )
+            return [self.future_id, self.parent_id]
+        return [self.future_id, *parent._lineage()]
 
 
 @dataclass(frozen=True, slots=False)
@@ -149,8 +167,9 @@ class FutureUndefinedPending(FutureResult[A]):
             FutureUndefinedPending[A]: A new instance of FutureUndefinedPending with a unique future_id.
         """
         import uuid
+        parent_id = kwargs.pop("parent_id", None)
         future_id = kwargs.pop("future_id", None) or str(uuid.uuid4())
-        return FutureUndefinedPending[A](future_id=future_id, **kwargs)
+        return FutureUndefinedPending[A](future_id=future_id, parent_id=parent_id, **kwargs)
 
     def __post_init__(self):
         logger.debug(f"Future[{self.future_id}] initialized and pending execution")
@@ -183,6 +202,7 @@ class FutureUndefinedPending(FutureResult[A]):
         """
         fip = FutureUndefinedInProgress[A](
             future_id=self.future_id,
+            parent_id=self.parent_id,
             started_at=perf_counter(),
             function_name=function.__name__,
         )
@@ -257,6 +277,7 @@ class FutureUndefinedInProgress(FutureResult[A]):
                 raise e
         future_defined = FutureDefined(
             future_id=self.future_id,
+            parent_id=self.parent_id,
             value=value,
             ok=ok,
         )

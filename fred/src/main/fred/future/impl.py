@@ -62,6 +62,7 @@ class Future(MonadInterface[A]):
             function: Callable[..., A],
             on_start: Optional[CallbackInterface] = None,
             on_complete: Optional[CallbackInterface] = None,
+            parent_id: Optional[str] = None,
             **kwargs
         ):
         """Initializes a Future with the provided function to be executed asynchronously.
@@ -76,11 +77,12 @@ class Future(MonadInterface[A]):
                 All keyword arguments except 'future_id' are forwarded to the target function.
         """
         # Create a new available future
-        future = FutureUndefinedPending.auto(future_id=kwargs.pop("future_id", None))
+        future = FutureUndefinedPending.auto(parent_id=parent_id, future_id=kwargs.pop("future_id", None))
         # Register the Future-ID and define the available future via the provided function.
         # Note: The 'apply' method is blocking by itself; thus, we run it in a separate thread.
         # Note: The thread is a daemon to ensure it does not block program exit.
         self.future_id = future.future_id
+        self.parent_id = parent_id
         self.thread = Thread(
             target=lambda: future.apply(
                 function=function,
@@ -220,6 +222,7 @@ class Future(MonadInterface[A]):
             Future[B]: A new Future representing the chained operation."""
         # TODO: Is there a more efficient implementation?
         return Future(
+            parent_id=self.future_id,
             function=lambda:
                 function(self.wait_and_resolve(timeout=timeout))
                 .wait_and_resolve(timeout=timeout)
@@ -241,7 +244,10 @@ class Future(MonadInterface[A]):
                                           and returns a new value.
         Returns: Future[B]: A new Future containing the transformed result.
         """
-        return Future(function=lambda: function(self.wait_and_resolve()))
+        return Future(
+            function=lambda: function(self.wait_and_resolve()),
+            parent_id=self.future_id,
+        )
 
     @classmethod
     def pullsync(
@@ -283,3 +289,20 @@ class Future(MonadInterface[A]):
             on_complete=on_complete,
             **kwargs
         )
+    def lineage(self) -> list[str]:
+        """Retrieves the lineage of the future, tracing back through its parent futures.
+        This method is useful for debugging and understanding the sequence of computations
+        that led to the current future.
+        Returns:
+            list[str]: A list of future IDs representing the lineage, starting from the current future
+                       and tracing back through its parents.
+        """
+        logger.warning(
+            "The 'lineage' method should only be used for debugging purposes "
+            "as it may have performance implications and unreliable lineage due to "
+            "possible missing parent_id values caused by cleanup or TTL expiration."
+        )
+        if not (fr := FutureResult.from_backend(future_id=self.future_id)):
+            logger.error(f"Current future_id '{self.future_id}' does not exist in backend.")
+            return []
+        return fr._lineage()
