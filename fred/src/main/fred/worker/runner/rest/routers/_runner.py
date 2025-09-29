@@ -38,10 +38,11 @@ class RunnerRouterMethods:
         snapshot_at = datetime_utcnow().isoformat()
         req_queue = self.runner_backend.queue(f"req:{queue_slug}")
         res_queue = self.runner_backend.queue(f"res:{queue_slug}")
-
+        backend_name = self.runner_backend._cat.name
         return {
             "snapshot_at": snapshot_at,
             "queue_slug": queue_slug,
+            "queue_backend": backend_name,
             "req": req_queue.size(),
             "res": res_queue.size(),
         }

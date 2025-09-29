@@ -11,6 +11,7 @@ logger = logger_manager.get_logger(name=__name__)
 class RunnerBackend:
     keyval: FredKeyVal
     queue: FredQueue
+    _cat: ServiceCatalog
 
     @classmethod
     def auto(cls, service_name: str, **kwargs) -> 'RunnerBackend':
@@ -28,4 +29,5 @@ class RunnerBackend:
         return cls(
             keyval=components.KEYVAL.value,
             queue=components.QUEUE.value,
+            _cat=service,
         )
