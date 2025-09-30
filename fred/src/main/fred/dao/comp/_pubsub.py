@@ -17,12 +17,12 @@ class FredSubscriptionMixin:
 
 @dataclass(frozen=True, slots=True)
 class FredPubSub(ComponentInterface, FredSubscriptionMixin):
-    """A simple queue implementation using a backend service.
-    This class provides methods to interact with a queue, such as adding,
-    removing, and checking the size of the queue. The actual implementation
+    """A simple publish-subscribe (pub-sub) implementation using a backend service.
+    This class provides methods to interact with pub-sub channels, such as publishing
+    messages, subscribing to channels, and managing subscriptions. The actual implementation
     of these methods depends on the underlying service being used (e.g., Redis).
     Attributes:
-        name: str: The name of the queue.
+        name: str: The name of the pub-sub channel.
     """
     name: str
 
