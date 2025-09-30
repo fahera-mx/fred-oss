@@ -20,7 +20,7 @@ from fred.future.settings import (
 from fred.future.callback.interface import CallbackInterface
 from fred.dao.service.catalog import ServiceCatalog
 from fred.utils.dateops import datetime_utcnow
-from fred.dao.comp.catalog import FredKeyVal
+from fred.dao.comp.catalog import FredKeyVal, FredQueue, FredPubSub
 from fred.monad.catalog import EitherMonad
 
 logger = logger_manager.get_logger(__name__)
@@ -30,6 +30,8 @@ A = TypeVar("A")
 
 class FutureBackend:
     keyval: type[FredKeyVal]
+    queue: type[FredQueue]
+    pubsub: type[FredPubSub]
 
     @classmethod
     def with_backend(cls, service: ServiceCatalog, **kwargs) -> type['FutureBackend']:
@@ -47,7 +49,9 @@ class FutureBackend:
             f"{service.name.title()}{cls.__name__}",
             (cls,),
             {
-                "keyval": components.KEYVAL.value
+                "keyval": components.KEYVAL.value,
+                "queue": components.QUEUE.value,
+                "pubsub": components.PUBSUB.value,
             },
         )
 
@@ -80,6 +84,7 @@ class FutureResult(Generic[A], FutureBackend.infer_backend()):
     retrieval and management of asynchronous tasks."""
     future_id: str
     parent_id: Optional[str]
+    broadcast: bool
 
     @staticmethod
     def _get_future_keyname(future_id: str) -> str:
@@ -89,6 +94,21 @@ class FutureResult(Generic[A], FutureBackend.infer_backend()):
     def future_keyname(self) -> str:
         return self._get_future_keyname(future_id=self.future_id)
     
+    @classmethod
+    def _get_bcast_channel(cls, future_id: str) -> FredPubSub:
+        return cls.pubsub(name=":".join([cls._get_future_keyname(future_id=future_id), "bcast"]))
+
+    @property
+    def bcast_channel(self) -> FredPubSub:
+        return self._get_bcast_channel(future_id=self.future_id)
+
+    def bcast_now(self, item: Optional[str] = None, ignore_flag: bool = False) -> bool:
+        if ignore_flag or self.broadcast:
+            self.bcast_channel.publish(item=item or self.stringify())
+            return True
+        return False
+        
+
     @classmethod
     def _get_status_key(cls, future_id: str) -> FredKeyVal:
         return cls.keyval(key=":".join([cls._get_future_keyname(future_id=future_id), "status"]))
@@ -132,7 +152,7 @@ class FutureResult(Generic[A], FutureBackend.infer_backend()):
 
     @classmethod
     def from_backend(cls, future_id: str) -> Optional['FutureResult[A]']:
-        return FutureResult(future_id=future_id, parent_id=None)._from_backend()
+        return FutureResult(future_id=future_id, parent_id=None, broadcast=False)._from_backend()
 
     @property
     def _pre(self) -> Optional['FutureResult']:
@@ -169,7 +189,8 @@ class FutureUndefinedPending(FutureResult[A]):
         import uuid
         parent_id = kwargs.pop("parent_id", None)
         future_id = kwargs.pop("future_id", None) or str(uuid.uuid4())
-        return FutureUndefinedPending[A](future_id=future_id, parent_id=parent_id, **kwargs)
+        broadcast = kwargs.pop("broadcast", False)
+        return FutureUndefinedPending[A](future_id=future_id, parent_id=parent_id, broadcast=broadcast, **kwargs)
 
     def __post_init__(self):
         logger.debug(f"Future[{self.future_id}] initialized and pending execution")
@@ -178,9 +199,10 @@ class FutureUndefinedPending(FutureResult[A]):
             expire=FRD_FUTURE_DEFAULT_EXPIRATION
         )
         self.obj.set(
-            value=self.stringify(),
+            value=(obj_payload := self.stringify()),
             expire=FRD_FUTURE_DEFAULT_EXPIRATION
         )
+        self.bcast_now(item=obj_payload, ignore_flag=False)
 
     def apply(
             self,
@@ -203,6 +225,7 @@ class FutureUndefinedPending(FutureResult[A]):
         fip = FutureUndefinedInProgress[A](
             future_id=self.future_id,
             parent_id=self.parent_id,
+            broadcast=self.broadcast,
             started_at=perf_counter(),
             function_name=function.__name__,
         )
@@ -227,9 +250,10 @@ class FutureUndefinedInProgress(FutureResult[A]):
             expire=FRD_FUTURE_DEFAULT_EXPIRATION
         )
         self.obj.set(
-            value=self.stringify(),
+            value=(obj_payload := self.stringify()),
             expire=FRD_FUTURE_DEFAULT_EXPIRATION
         )
+        self.bcast_now(item=obj_payload, ignore_flag=False)
 
     def exec(
             self,
@@ -278,6 +302,7 @@ class FutureUndefinedInProgress(FutureResult[A]):
         future_defined = FutureDefined(
             future_id=self.future_id,
             parent_id=self.parent_id,
+            broadcast=self.broadcast,
             value=value,
             ok=ok,
         )
@@ -308,9 +333,10 @@ class FutureDefined(FutureResult[A]):
             expire=FRD_FUTURE_DEFAULT_EXPIRATION
         )
         self.obj.set(
-            value=self.stringify(),
+            value=(obj_payload := self.stringify()),
             expire=FRD_FUTURE_DEFAULT_EXPIRATION
         )
+        self.bcast_now(item=obj_payload, ignore_flag=False)
         match self.value:
             case EitherMonad.Right(value=value):
                 # TODO: Consider using a more robust serialization method...

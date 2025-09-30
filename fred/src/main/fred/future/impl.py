@@ -63,6 +63,7 @@ class Future(MonadInterface[A]):
             on_start: Optional[CallbackInterface] = None,
             on_complete: Optional[CallbackInterface] = None,
             parent_id: Optional[str] = None,
+            broadcast: bool = False,
             **kwargs
         ):
         """Initializes a Future with the provided function to be executed asynchronously.
@@ -77,7 +78,11 @@ class Future(MonadInterface[A]):
                 All keyword arguments except 'future_id' are forwarded to the target function.
         """
         # Create a new available future
-        future = FutureUndefinedPending.auto(parent_id=parent_id, future_id=kwargs.pop("future_id", None))
+        future = FutureUndefinedPending.auto(
+            parent_id=parent_id,
+            broadcast=broadcast,
+            future_id=kwargs.pop("future_id", None),
+        )
         # Register the Future-ID and define the available future via the provided function.
         # Note: The 'apply' method is blocking by itself; thus, we run it in a separate thread.
         # Note: The thread is a daemon to ensure it does not block program exit.
@@ -276,6 +281,10 @@ class Future(MonadInterface[A]):
         Returns:
             Future[A]: A Future instance representing the pulled future.
         """
+        logger.warning(
+            "The 'pullsync' method is scheduled for deprecation and will be removed in future versions. "
+            "Please use the 'subscribe' method instead that uses a pubsub mechanism."
+        )
         from fred.future.utils import pull_future_result
 
         return cls(
@@ -289,6 +298,70 @@ class Future(MonadInterface[A]):
             on_complete=on_complete,
             **kwargs
         )
+
+    @classmethod
+    def subscribe(
+            cls,
+            future_id: str,
+            on_start: Optional[CallbackInterface] = None,
+            on_complete: Optional[CallbackInterface] = None,
+    ) -> 'Future[A]':
+        """Subscribes to updates for an existing future using a publish-subscribe mechanism.
+        This method allows for receiving real-time updates about the future's state
+        and result without blocking.
+        Args:
+            future_id (str): The unique identifier of the future to subscribe to.
+            on_start (Optional[CallbackInterface]): An optional callback to be executed
+                                                   when the subscription starts.
+            on_complete (Optional[CallbackInterface]): An optional callback to be executed
+                                                      when the future completes.
+        Returns:
+            Future[A]: A Future instance that will execute the subscription logic.
+        """
+        # Define a closure that will handle incoming messages from the pub-sub channel
+        def closure():
+            for payload in FutureResult._get_bcast_channel(future_id=future_id).subscribe():
+                if payload.get("type") != "message":
+                    continue
+                message = payload.get("data")
+                if not message:
+                    continue
+                match FutureResult.from_string(message):
+                    case FutureDefined(value=value):
+                        return value.resolve()
+                    case FutureUndefinedPending():
+                        continue
+                    case FutureUndefinedInProgress():
+                        continue
+                    case _:
+                        raise TypeError("Unknown FutureResult type")
+        shared_params = {
+            "parent_id": future_id,
+            "broadcast": False,
+            "on_start": on_start,
+            "on_complete": on_complete,
+        }
+        # Depending on the current state of the future, either return the resolved value
+        # or subscribe to the broadcast channel to wait for updates (via closure).
+        match FutureResult.from_backend(future_id=future_id):
+            case FutureDefined(value=value):
+                return cls(
+                    function=lambda: value.resolve(),
+                    **shared_params
+                )
+            case instance:
+                # The future-result can be None if the future_id does not exist
+                if not instance:
+                    raise ValueError(f"Future with ID '{future_id}' does not exist.")
+                # If the future exists, but is not configured for broadcast, raise an error...
+                if not instance.broadcast:
+                    raise ValueError("Future is not configured for broadcast; cannot subscribe.")
+                # If the future exists and is configured for broadcast, subscribe to updates...
+                return cls(
+                    function=closure,
+                    **shared_params
+                )
+
     def lineage(self) -> list[str]:
         """Retrieves the lineage of the future, tracing back through its parent futures.
         This method is useful for debugging and understanding the sequence of computations
