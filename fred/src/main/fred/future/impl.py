@@ -205,8 +205,8 @@ class Future(MonadInterface[A]):
         return self.wait(timeout=timeout).resolve()
 
     @classmethod
-    def from_value(cls, val: A) -> 'Future[A]':
-        return Future(function=lambda: val)
+    def from_value(cls, val: A, **kwargs) -> 'Future[A]':
+        return Future(function=lambda: val, **kwargs)
     
     def flat_map(self, function: Callable[[A], 'Future[B]'], timeout: Optional[float] = None) -> 'Future[B]':
         """Chains the current future with another future-producing function.
@@ -321,9 +321,13 @@ class Future(MonadInterface[A]):
         Returns:
             Future[A]: A Future instance that will execute the subscription logic.
         """
+        # TODO: Consider adding a timeout parameter to avoid waiting indefinitely...
+        # TODO: There's a known issue where if the future completes before we subscribe,
+        #       we might miss the completion message.
         # Define a closure that will handle incoming messages from the pub-sub channel
         def closure():
             for payload in FutureResult._get_bcast_channel(future_id=future_id).subscribe():
+                logger.info(f"Received pubsub message for future '{future_id}': {payload}")
                 if payload.get("type") != "message":
                     continue
                 message = payload.get("data")
@@ -370,6 +374,7 @@ class Future(MonadInterface[A]):
                 if not instance.broadcast:
                     raise ValueError("Future is not configured for broadcast; cannot subscribe.")
                 # If the future exists and is configured for broadcast, subscribe to updates...
+                logger.info(f"Subscribing to future '{future_id}' via broadcast channel.")
                 return cls(
                     function=closure,
                     **shared_params
