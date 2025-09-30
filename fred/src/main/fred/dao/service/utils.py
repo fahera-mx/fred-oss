@@ -28,10 +28,10 @@ def get_redis_configs_from_payload(
         if (db := payload.get(db_key) if keep else payload.pop(db_key, None)):
             break
     return {
-        "host": host or get_environ_variable(name="REDIS_HOST", default="localhost"),
-        "port": int(port or get_environ_variable(name="REDIS_PORT", default=6379)),
+        "host": host or get_environ_variable(name="REDIS_HOST", default=None) or "localhost",
+        "port": int(port or get_environ_variable(name="REDIS_PORT", default=None) or 6379),
         "password": password or get_environ_variable(name="REDIS_PASSWORD", default=None),
-        "db": int(db or get_environ_variable(name="REDIS_DB", default=0)),
+        "db": int(db or get_environ_variable(name="REDIS_DB", default=None) or 0),
         "decode_responses": True,
         **(payload.get("redis_configs", {}) if keep else payload.pop("redis_configs", {})),
     }
