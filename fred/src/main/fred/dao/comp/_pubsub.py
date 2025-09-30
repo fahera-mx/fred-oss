@@ -36,10 +36,17 @@ class FredPubSub(ComponentInterface, FredSubscriptionMixin):
                 raise NotImplementedError(f"Publish method not implemented for service {self._nme}")
 
     def subscribe(self, subscription_id: Optional[str] = None):
-        """Clears all items from the queue.
-        The implementation of this method depends on the underlying service.
-        For example, if the service is Redis, it uses the DEL command to remove the
-        key representing the queue.
+        """Subscribe to the pub/sub channel and yield messages as they arrive.
+
+        This method creates (or reuses) a subscription to the channel specified by `self.name`.
+        It returns a generator that yields messages received on the channel.
+        The implementation depends on the underlying service (e.g., Redis).
+
+        Args:
+            subscription_id (Optional[str]): An optional identifier for the subscription. If not provided, a new UUID is generated.
+
+        Yields:
+            Messages received from the channel.
         Raises:
             NotImplementedError: If the method is not implemented for the current service.
         """
