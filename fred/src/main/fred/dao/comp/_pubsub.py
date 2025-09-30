@@ -67,25 +67,10 @@ class FredPubSub(ComponentInterface, FredSubscriptionMixin):
 
     @classmethod
     def unsubscribe(cls, subscription_id: str) -> None:
-        logger.warning(
-            "Consider that the current implementation only allows unsubscribing "
-            "within the same underlying python process."
-        )
-        # Early exit if subscription_id does not exist
-        if subscription_id not in cls.subs:
-            logger.warning(f"No active subscription found for ID: {subscription_id}")
-            return
-        # Pop-out the subscriber from the shared subscriptions dictionary
-        subscriber = cls.subs.pop(subscription_id)
-        match cls._cat:
-            case ServiceCatalog.REDIS:
-                subscriber.unsubscribe()
-                subscriber.close()
-            case ServiceCatalog.STDLIB:
-                raise NotImplementedError("Unsubscribe method not implemented for STDLIB service")
-            case _:
-                raise NotImplementedError(f"Unsubscribe method not implemented for service {cls._nme}")
+        logger.error("The unsubscribe method not implemented yet.")
+        raise NotImplementedError("Unsubscribe method not implemented yet.")
 
     @classmethod
     def subscribers(cls) -> list[str]:
-        return list(cls.subs.keys())
+        logger.error("The subscribers method not implemented yet.")
+        raise NotImplementedError("Subscribers method not implemented yet.")
