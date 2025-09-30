@@ -33,7 +33,7 @@ class FredPubSub(ComponentInterface, FredSubscriptionMixin):
             case ServiceCatalog.STDLIB:
                 raise NotImplementedError("Publish method not implemented for STDLIB service")
             case _:
-                raise NotImplementedError(f"Size method not implemented for service {self._nme}")
+                raise NotImplementedError(f"Publish method not implemented for service {self._nme}")
 
     def subscribe(self, subscription_id: Optional[str] = None):
         """Clears all items from the queue.
