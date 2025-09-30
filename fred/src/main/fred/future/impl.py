@@ -63,6 +63,7 @@ class Future(MonadInterface[A]):
             on_start: Optional[CallbackInterface] = None,
             on_complete: Optional[CallbackInterface] = None,
             parent_id: Optional[str] = None,
+            broadcast: bool = False,
             **kwargs
         ):
         """Initializes a Future with the provided function to be executed asynchronously.
@@ -77,7 +78,11 @@ class Future(MonadInterface[A]):
                 All keyword arguments except 'future_id' are forwarded to the target function.
         """
         # Create a new available future
-        future = FutureUndefinedPending.auto(parent_id=parent_id, future_id=kwargs.pop("future_id", None))
+        future = FutureUndefinedPending.auto(
+            parent_id=parent_id,
+            broadcast=broadcast,
+            future_id=kwargs.pop("future_id", None),
+        )
         # Register the Future-ID and define the available future via the provided function.
         # Note: The 'apply' method is blocking by itself; thus, we run it in a separate thread.
         # Note: The thread is a daemon to ensure it does not block program exit.
@@ -289,6 +294,41 @@ class Future(MonadInterface[A]):
             on_complete=on_complete,
             **kwargs
         )
+
+    @classmethod
+    def subscribe(cls, future_id: str):
+        def closure():
+            for payload in FutureResult._get_bcast_channel(future_id=future_id).subscribe():
+                if payload.get("type") != "message":
+                    continue
+                message = payload.get("data")
+                if not message:
+                    continue
+                match FutureResult.from_string(message):
+                    case FutureDefined(value=value):
+                        return value.resolve()
+                    case FutureUndefinedPending():
+                        continue
+                    case FutureUndefinedInProgress():
+                        continue
+                    case _:
+                        raise TypeError("Unknown FutureResult type")
+        # Depending on the current state of the future, either return the resolved value
+        # or subscribe to the broadcast channel to wait for updates (via closure).
+        match FutureResult.from_backend(future_id=future_id):
+            case FutureDefined(value=value):
+                return cls(
+                    function=lambda: value.resolve(),
+                    parent_id=future_id,
+                )
+            case instance:
+                if not instance.broadcast:
+                    raise ValueError("Future is not configured for broadcast; cannot subscribe.")
+                return cls(
+                    function=closure,
+                    parent_id=future_id,
+                )
+
     def lineage(self) -> list[str]:
         """Retrieves the lineage of the future, tracing back through its parent futures.
         This method is useful for debugging and understanding the sequence of computations
