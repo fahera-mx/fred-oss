@@ -10,7 +10,9 @@ logger = logger_manager.get_logger(name=__name__)
 
 
 class FredSubscriptionMixin:
-    subs: dict = {}  # TODO: Improve typing... and better underlying subscriptions management!
+    # TODO: Improve typing... and better underlying subscriptions management!
+    # This only works within the same python process.
+    subs: dict = {}
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +60,10 @@ class FredPubSub(ComponentInterface, FredSubscriptionMixin):
 
     @classmethod
     def unsubscribe(cls, subscription_id: str) -> None:
+        logger.warning(
+            "Consider that the current implementation only allows unsubscribing "
+            "within the same underlying python process."
+        )
         # Early exit if subscription_id does not exist
         if subscription_id not in cls.subs:
             logger.warning(f"No active subscription found for ID: {subscription_id}")
