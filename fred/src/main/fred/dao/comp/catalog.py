@@ -5,6 +5,7 @@ from typing import Optional
 from fred.dao.comp.interface import ComponentInterface, SRV_REF_TYPE
 from fred.dao.comp._queue import FredQueue
 from fred.dao.comp._keyval import FredKeyVal
+from fred.dao.comp._pubsub import FredPubSub
 
 
 class _PreconfCatalogMixin:
@@ -34,6 +35,7 @@ class CompCatalog(enum.Enum):
     """
     QUEUE = FredQueue
     KEYVAL = FredKeyVal
+    PUBSUB = FredPubSub
 
     @classmethod
     def from_classname(cls, classname: str) -> "CompCatalog":
