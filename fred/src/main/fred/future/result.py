@@ -107,7 +107,6 @@ class FutureResult(Generic[A], FutureBackend.infer_backend()):
             self.bcast_channel.publish(item=item or self.stringify())
             return True
         return False
-        
 
     @classmethod
     def _get_status_key(cls, future_id: str) -> FredKeyVal:

@@ -1,3 +1,4 @@
+import time
 from threading import Thread
 from typing import (
     Callable,
@@ -204,8 +205,22 @@ class Future(MonadInterface[A]):
         return self.wait(timeout=timeout).resolve()
 
     @classmethod
-    def from_value(cls, val: A) -> 'Future[A]':
-        return Future(function=lambda: val)
+    def from_value(cls, val: A, **kwargs) -> 'Future[A]':
+        """
+        Creates a Future that is immediately resolved with the given value.
+
+        Args:
+            val (A): The value to resolve the Future with.
+            **kwargs: Additional keyword arguments forwarded to the Future constructor.
+                These may include parameters such as:
+                    - parent_id (Optional[str]): The parent future's ID.
+                    - expiration (Optional[float]): Expiration time for the future.
+                    - callback (Optional[CallbackInterface]): Callback to invoke on completion.
+                For a full list of accepted parameters, see the Future class documentation.
+        Returns:
+            Future[A]: A Future instance resolved with the provided value.
+        """
+        return Future(function=lambda: val, **kwargs)
     
     def flat_map(self, function: Callable[[A], 'Future[B]'], timeout: Optional[float] = None) -> 'Future[B]':
         """Chains the current future with another future-producing function.
@@ -305,6 +320,8 @@ class Future(MonadInterface[A]):
             future_id: str,
             on_start: Optional[CallbackInterface] = None,
             on_complete: Optional[CallbackInterface] = None,
+            retry_delay: float = 0.2,
+            retry: int = 3,
     ) -> 'Future[A]':
         """Subscribes to updates for an existing future using a publish-subscribe mechanism.
         This method allows for receiving real-time updates about the future's state
@@ -318,9 +335,13 @@ class Future(MonadInterface[A]):
         Returns:
             Future[A]: A Future instance that will execute the subscription logic.
         """
+        # TODO: Consider adding a timeout parameter to avoid waiting indefinitely...
+        # TODO: There's a known issue where if the future completes before we subscribe,
+        #       we might miss the completion message.
         # Define a closure that will handle incoming messages from the pub-sub channel
         def closure():
             for payload in FutureResult._get_bcast_channel(future_id=future_id).subscribe():
+                logger.info(f"Received pubsub message for future '{future_id}': {payload}")
                 if payload.get("type") != "message":
                     continue
                 message = payload.get("data")
@@ -352,11 +373,22 @@ class Future(MonadInterface[A]):
             case instance:
                 # The future-result can be None if the future_id does not exist
                 if not instance:
-                    raise ValueError(f"Future with ID '{future_id}' does not exist.")
+                    if retry <= 0:
+                        raise ValueError(f"Future with ID '{future_id}' does not exist.")
+                    logger.error(f"Future with ID '{future_id}' does not exist; attempting to retry ({retry} retries left).")
+                    time.sleep(retry_delay)
+                    return cls.subscribe(
+                        future_id=future_id,
+                        on_start=on_start,
+                        on_complete=on_complete,
+                        retry_delay=retry_delay,
+                        retry=max(0, retry - 1),
+                    )
                 # If the future exists, but is not configured for broadcast, raise an error...
                 if not instance.broadcast:
                     raise ValueError("Future is not configured for broadcast; cannot subscribe.")
                 # If the future exists and is configured for broadcast, subscribe to updates...
+                logger.info(f"Subscribing to future '{future_id}' via broadcast channel.")
                 return cls(
                     function=closure,
                     **shared_params
