@@ -281,6 +281,10 @@ class Future(MonadInterface[A]):
         Returns:
             Future[A]: A Future instance representing the pulled future.
         """
+        logger.warning(
+            "The 'pullsync' method is scheduled for deprecation and will be removed in future versions. "
+            "Please use the 'subscribe' method instead that uses a pubsub mechanism."
+        )
         from fred.future.utils import pull_future_result
 
         return cls(
@@ -296,7 +300,25 @@ class Future(MonadInterface[A]):
         )
 
     @classmethod
-    def subscribe(cls, future_id: str):
+    def subscribe(
+            cls,
+            future_id: str,
+            on_start: Optional[CallbackInterface] = None,
+            on_complete: Optional[CallbackInterface] = None,
+    ) -> 'Future[A]':
+        """Subscribes to updates for an existing future using a publish-subscribe mechanism.
+        This method allows for receiving real-time updates about the future's state
+        and result without blocking.
+        Args:
+            future_id (str): The unique identifier of the future to subscribe to.
+            on_start (Optional[CallbackInterface]): An optional callback to be executed
+                                                   when the subscription starts.
+            on_complete (Optional[CallbackInterface]): An optional callback to be executed
+                                                      when the future completes.
+        Returns:
+            Future[A]: A Future instance that will execute the subscription logic.
+        """
+        # Define a closure that will handle incoming messages from the pub-sub channel
         def closure():
             for payload in FutureResult._get_bcast_channel(future_id=future_id).subscribe():
                 if payload.get("type") != "message":
@@ -313,22 +335,26 @@ class Future(MonadInterface[A]):
                         continue
                     case _:
                         raise TypeError("Unknown FutureResult type")
+        shared_params = {
+            "parent_id": future_id,
+            "broadcast": False,
+            "on_start": on_start,
+            "on_complete": on_complete,
+        }
         # Depending on the current state of the future, either return the resolved value
         # or subscribe to the broadcast channel to wait for updates (via closure).
         match FutureResult.from_backend(future_id=future_id):
             case FutureDefined(value=value):
                 return cls(
                     function=lambda: value.resolve(),
-                    parent_id=future_id,
-                    broadcast=False,
+                    **shared_params
                 )
             case instance:
                 if not instance.broadcast:
                     raise ValueError("Future is not configured for broadcast; cannot subscribe.")
                 return cls(
                     function=closure,
-                    parent_id=future_id,
-                    broadcast=False,
+                    **shared_params
                 )
 
     def lineage(self) -> list[str]:
