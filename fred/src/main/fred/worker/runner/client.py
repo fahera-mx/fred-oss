@@ -124,6 +124,10 @@ class RunnerClient:
             retry_backoff_rate: float = 0.1,
             **kwargs,
     ) -> Future:
+        logger.warning(
+            "Using 'pullsync' is to be deprecated soon; use the 'Future.subscribe' "
+            "method instead (by default this is used on fetch_result with 'use_pullsync=False')."
+        )
         return Future(
             function=self._pullsync,
             request_id=request_id,
@@ -160,8 +164,16 @@ class RunnerClient:
                 return False
         return True
 
-    def fetch_result(self, request_id: str, now: bool = False, timeout: Optional[float] = None, **kwargs) -> Optional[dict]:
-        future = self.pullsync(request_id=request_id, **kwargs)
+    def fetch_result(
+            self,
+            request_id: str,
+            now: bool = False,
+            timeout: Optional[float] = None,
+            use_pullsync: bool = False,
+            **kwargs,
+    ) -> Optional[dict]:
+        future = self.pullsync(request_id=request_id, **kwargs) \
+            if use_pullsync else Future.subscribe(future_id=request_id, **kwargs)
         if now:
             return future.getwhatevernow()
         return future.wait_and_resolve(timeout=timeout)
