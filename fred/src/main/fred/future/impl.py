@@ -350,8 +350,13 @@ class Future(MonadInterface[A]):
                     **shared_params
                 )
             case instance:
+                # The future-result can be None if the future_id does not exist
+                if not instance:
+                    raise ValueError(f"Future with ID '{future_id}' does not exist.")
+                # If the future exists, but is not configured for broadcast, raise an error...
                 if not instance.broadcast:
                     raise ValueError("Future is not configured for broadcast; cannot subscribe.")
+                # If the future exists and is configured for broadcast, subscribe to updates...
                 return cls(
                     function=closure,
                     **shared_params
