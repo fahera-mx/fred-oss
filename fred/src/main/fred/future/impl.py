@@ -320,6 +320,7 @@ class Future(MonadInterface[A]):
                 return cls(
                     function=lambda: value.resolve(),
                     parent_id=future_id,
+                    broadcast=False,
                 )
             case instance:
                 if not instance.broadcast:
@@ -327,6 +328,7 @@ class Future(MonadInterface[A]):
                 return cls(
                     function=closure,
                     parent_id=future_id,
+                    broadcast=False,
                 )
 
     def lineage(self) -> list[str]:
