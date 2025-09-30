@@ -63,7 +63,7 @@ class FredPubSub(ComponentInterface, FredSubscriptionMixin):
             case ServiceCatalog.STDLIB:
                 raise NotImplementedError("Subscribe method not implemented for STDLIB service")
             case _:
-                raise NotImplementedError(f"Clear method not implemented for service {self._nme}")
+                raise NotImplementedError(f"Subscribe method not implemented for service {self._nme}")
 
     @classmethod
     def unsubscribe(cls, subscription_id: str) -> None:
