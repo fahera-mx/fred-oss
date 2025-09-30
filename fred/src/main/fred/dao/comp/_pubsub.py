@@ -66,11 +66,13 @@ class FredPubSub(ComponentInterface, FredSubscriptionMixin):
                 raise NotImplementedError(f"Subscribe method not implemented for service {self._nme}")
 
     @classmethod
-    def unsubscribe(cls, subscription_id: str) -> None:
+    def unsubscribe(cls, subscription_id: str, close: bool = False) -> None:
+        # TODO: Implement the 'unsubscribe' and optially close the subscriber.
         logger.error("The unsubscribe method not implemented yet.")
         raise NotImplementedError("Unsubscribe method not implemented yet.")
 
     @classmethod
     def subscribers(cls) -> list[str]:
+        # TODO: Implement the 'subscribers' method to list active subscriptions.
         logger.error("The subscribers method not implemented yet.")
         raise NotImplementedError("Subscribers method not implemented yet.")
