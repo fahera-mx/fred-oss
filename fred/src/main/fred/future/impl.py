@@ -1,3 +1,4 @@
+import time
 from threading import Thread
 from typing import (
     Callable,
@@ -305,6 +306,8 @@ class Future(MonadInterface[A]):
             future_id: str,
             on_start: Optional[CallbackInterface] = None,
             on_complete: Optional[CallbackInterface] = None,
+            retry_delay: float = 0.2,
+            retry: int = 3,
     ) -> 'Future[A]':
         """Subscribes to updates for an existing future using a publish-subscribe mechanism.
         This method allows for receiving real-time updates about the future's state
@@ -352,7 +355,17 @@ class Future(MonadInterface[A]):
             case instance:
                 # The future-result can be None if the future_id does not exist
                 if not instance:
-                    raise ValueError(f"Future with ID '{future_id}' does not exist.")
+                    if retry <= 0:
+                        raise ValueError(f"Future with ID '{future_id}' does not exist.")
+                    logger.error(f"Future with ID '{future_id}' does not exist; attempting to retry ({retry} retries left).")
+                    time.sleep(retry_delay)
+                    return cls.subscribe(
+                        future_id=future_id,
+                        on_start=on_start,
+                        on_complete=on_complete,
+                        retry_delay=retry_delay,
+                        retry=max(0, retry - 1),
+                    )
                 # If the future exists, but is not configured for broadcast, raise an error...
                 if not instance.broadcast:
                     raise ValueError("Future is not configured for broadcast; cannot subscribe.")
