@@ -206,6 +206,20 @@ class Future(MonadInterface[A]):
 
     @classmethod
     def from_value(cls, val: A, **kwargs) -> 'Future[A]':
+        """
+        Creates a Future that is immediately resolved with the given value.
+
+        Args:
+            val (A): The value to resolve the Future with.
+            **kwargs: Additional keyword arguments forwarded to the Future constructor.
+                These may include parameters such as:
+                    - parent_id (Optional[str]): The parent future's ID.
+                    - expiration (Optional[float]): Expiration time for the future.
+                    - callback (Optional[CallbackInterface]): Callback to invoke on completion.
+                For a full list of accepted parameters, see the Future class documentation.
+        Returns:
+            Future[A]: A Future instance resolved with the provided value.
+        """
         return Future(function=lambda: val, **kwargs)
     
     def flat_map(self, function: Callable[[A], 'Future[B]'], timeout: Optional[float] = None) -> 'Future[B]':
