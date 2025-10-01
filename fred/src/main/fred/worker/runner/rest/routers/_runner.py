@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from fred.future import Future
 from fred.settings import logger_manager
 from fred.utils.dateops import datetime_utcnow
 from fred.worker.runner.rest.routers.interface import RouterInterface
@@ -88,7 +89,6 @@ class RunnerRouterMethods:
         }
 
     def runner_output(self, request_id: str, nonblocking: bool = False, timeout: Optional[float] = None) -> dict:
-        from fred.future import Future
 
         output_requested_at = datetime_utcnow().isoformat()
         # Subscribe to the future result using the request_id
