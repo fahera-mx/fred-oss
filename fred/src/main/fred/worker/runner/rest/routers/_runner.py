@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 from fred.settings import logger_manager
 from fred.utils.dateops import datetime_utcnow
@@ -84,6 +85,22 @@ class RunnerRouterMethods:
             "request_id": request.request_id,
             "queue_slug": queue_slug,
             "dispatched_at": datetime_utcnow().isoformat(),
+        }
+
+    def runner_output(self, request_id: str, nonblocking: bool = False, timeout: Optional[float] = None, **kwargs) -> dict:
+        from fred.future import Future
+
+        requested_at = datetime_utcnow().isoformat()
+        # Subscribe to the future result using the request_id
+        future = Future.subscribe(future_id=request_id, **kwargs)
+        if nonblocking:
+            # TODO: Implement non-blocking fetch logic... let's ensure it's worth the effort.
+            raise NotImplementedError("Non-blocking fetch not implemented yet...")
+        return {
+            "request_id": request_id,
+            "requested_at": requested_at,
+            "responsed_at": datetime_utcnow().isoformat(),
+            "output": future.wait_and_resolve(timeout=timeout),
         }
 
 
