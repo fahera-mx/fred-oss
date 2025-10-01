@@ -87,19 +87,19 @@ class RunnerRouterMethods:
             "dispatched_at": datetime_utcnow().isoformat(),
         }
 
-    def runner_output(self, request_id: str, nonblocking: bool = False, timeout: Optional[float] = None, **kwargs) -> dict:
+    def runner_output(self, request_id: str, nonblocking: bool = False, timeout: Optional[float] = None) -> dict:
         from fred.future import Future
 
-        requested_at = datetime_utcnow().isoformat()
+        output_requested_at = datetime_utcnow().isoformat()
         # Subscribe to the future result using the request_id
-        future = Future.subscribe(future_id=request_id, **kwargs)
+        future = Future.subscribe(future_id=request_id)
         if nonblocking:
             # TODO: Implement non-blocking fetch logic... let's ensure it's worth the effort.
             raise NotImplementedError("Non-blocking fetch not implemented yet...")
         return {
             "request_id": request_id,
-            "requested_at": requested_at,
-            "responsed_at": datetime_utcnow().isoformat(),
+            "output_requested_at": output_requested_at,
+            "output_delivered_at": datetime_utcnow().isoformat(),
             "output": future.wait_and_resolve(timeout=timeout),
         }
 
@@ -139,4 +139,12 @@ class RunnerRouter(RouterInterface.with_backend(), RunnerRouterMethods):
             tags=["Runner"],
             summary="Execute a task by dispatching a request to the specified queue.",
             response_description="Details about the dispatched request.",
+        )
+        self.router.add_api_route(
+            "/output/{request_id}",
+            self.runner_output,
+            methods=["GET"],
+            tags=["Runner"],
+            summary="Fetch the output of a previously dispatched request.",
+            response_description="The output of the request.",
         )
