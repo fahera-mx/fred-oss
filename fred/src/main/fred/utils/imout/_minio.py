@@ -17,12 +17,12 @@ class OutputMinio(ImageOutputInterface):
         cls.client = CompCatalog.KEYVAL.mount(minio)
         return cls(**kwargs)
 
-    def out(self, bucket: str, filename: str, presigned: bool = False) -> str:
+    def out(self, bucket: str, filename: str, presigned: bool = False, **kwargs) -> str:
         from fred.utils.imops import image_to_b64
 
         image_key = posixpath.join(bucket, filename)
         image_string = image_to_b64(self.image)
-        self.client(key=image_key).set(image_string)
+        self.client(key=image_key).set(image_string,  **kwargs)
         if not presigned:
             return posixpath.join(
                 self.metadata.get("minio_endpoint", ""),
