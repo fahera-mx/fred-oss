@@ -1,5 +1,6 @@
 from fred.utils.imout.interface import ImageOutputInterface
 
+
 class OutputFilesystem(ImageOutputInterface):
     """Filesystem output handler for images."""
 
