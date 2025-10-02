@@ -8,15 +8,15 @@ class ImageOutputBackendInterface:
     metadata: dict = {}
     client: Optional[Any] = None  # Placeholder for clients like MinIO, S3, etc.
 
-    @classmethod
-    def set_shared_client(cls, client: Any) -> None:
-        cls.client = client
-
 
 @dataclass(frozen=True, slots=True)
 class ImageOutputInterface(ImageOutputBackendInterface):
     """Interface for image output handling."""
     image: Image
+
+    @classmethod
+    def auto(cls, **kwargs) -> 'ImageOutputInterface':
+        return cls(**kwargs)
 
     @classmethod
     def from_path(cls, path: str) -> "ImageOutputInterface":
