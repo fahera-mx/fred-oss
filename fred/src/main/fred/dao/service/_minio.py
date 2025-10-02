@@ -72,7 +72,7 @@ class MinioService(ServiceInterface[Minio]):
                 **pool_configs
             )
         cls.metadata["minio_endpoint"] = minio_configs.get("endpoint")
-        return Minio(cert_check=not disable_cert, **get_minio_from_payload(kwargs))
+        return Minio(cert_check=not disable_cert, **minio_configs)
 
     @classmethod
     def auto(cls, disable_cert: bool = False, **kwargs) -> "MinioService":
