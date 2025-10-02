@@ -3,6 +3,7 @@ from functools import lru_cache
 from typing import TypeVar, Optional
 
 from fred.dao.service.interface import ServiceInterface
+from fred.dao.service._minio import MinioService
 from fred.dao.service._redis import RedisService
 from fred.dao.service._stdlib import StdLibService
 
@@ -12,6 +13,7 @@ T = TypeVar("T")
 class ServiceCatalog(enum.Enum):
     STDLIB = StdLibService
     REDIS = RedisService
+    MINIO = MinioService
 
     @classmethod
     def from_classname(cls, classname: str) -> "ServiceCatalog":
