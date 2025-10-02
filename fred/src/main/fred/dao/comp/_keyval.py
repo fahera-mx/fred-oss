@@ -1,11 +1,30 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from fred.settings import logger_manager
+from fred.settings import logger_manager, get_environ_variable
 from fred.dao.service.catalog import ServiceCatalog
 from fred.dao.comp.interface import ComponentInterface
 
 logger = logger_manager.get_logger(name=__name__)
+
+
+def _get_minio_elements_from_key(key: str, **kwargs) -> tuple[str, str]:
+    import os
+
+    fullpath = os.path.join(
+        kwargs.pop("bucket_name", get_environ_variable("MINIO_BUCKET")) or "",
+        key
+    )
+    bucket_name = os.path.dirname(fullpath)
+    object_name = os.path.basename(fullpath)
+    if not bucket_name:
+        raise ValueError(
+            "Bucket name must be specified either in kwargs, environment variable MINIO_BUCKET, "
+            "or implicitly as part of the key."
+        )
+    if not object_name:
+        raise ValueError("Object name cannot be empty.")
+    return bucket_name, object_name
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +61,30 @@ class FredKeyVal(ComponentInterface):
                 # TODO: Implement expiration logic
                 if "expire" in kwargs:
                     logger.warning("Expiration not implemented for STDLIB service.")
+            case ServiceCatalog.MINIO:
+                # MinIO is not a key-value store, but we can simulate it:
+                # the key will be the object name, and the value will be the object content.
+                import io
+
+                bucket_name, object_name = _get_minio_elements_from_key(key, **kwargs)
+                # Ensure the bucket exists or create otherwise
+                if not self._srv.bucket_exists(bucket_name):
+                    logger.warning(f"Creating bucket since doesn't exists: {bucket_name}")
+                    self._srv.client.make_bucket(bucket_name)
+                if "expire" in kwargs:
+                    # TODO: Implement expiration logic
+                    logger.warning("Expiration not implemented for MINIO service.")
+                # Prepare the value as a byte stream
+                value_bytes = value.encode("utf-8")
+                value_stream = io.BytesIO(value_bytes)
+                value_stream.seek(0)  # Ensure the stream is at the beginning
+                # Put the object into the bucket
+                self._srv.client.put_object(
+                    bucket_name=bucket_name,
+                    object_name=object_name,
+                    data=value_stream,
+                    length=len(value_bytes),
+                )
             case _:
                 raise NotImplementedError(f"Set method not implemented for service {self._nme}")
 
@@ -67,6 +110,32 @@ class FredKeyVal(ComponentInterface):
                 result = self._srv.client.get(key)
             case ServiceCatalog.STDLIB:
                 result = self._srv.client._memstore_keyval.get(key)
+            case ServiceCatalog.MINIO:
+                bucket_name, object_name = _get_minio_elements_from_key(key)
+                # Verify if the bucket exists
+                if not self._srv.bucket_exists(bucket_name):
+                    logger.warning(f"Bucket {bucket_name} does not exist.")
+                    if fail:
+                        raise KeyError(f"Bucket {bucket_name} does not exist.")
+                    return None
+                # Verify if the object exists
+                if not self._srv.object_exists(bucket_name, object_name):
+                    logger.warning(f"Object {object_name} in bucket {bucket_name} does not exist.")
+                    if fail:
+                        raise KeyError(f"Object {object_name} not found in bucket {bucket_name}.")
+                    return None
+                try:
+                    response = self._srv.client.get_object(bucket_name, object_name)
+                    result_bytes = response.read()
+                    result = result_bytes.decode("utf-8")
+                except Exception as e:
+                    logger.error(f"Error retrieving object {object_name} from bucket {bucket_name}: {e}")
+                    result = None
+                    if fail:
+                        raise KeyError(f"Object {object_name} not found in bucket {bucket_name}.")
+                finally:
+                    response.close()
+                    response.release_conn()
             case _:
                 raise NotImplementedError(f"Get method not implemented for service {self._nme}")
         if fail and result is None:
@@ -89,5 +158,19 @@ class FredKeyVal(ComponentInterface):
                 self._srv.client.delete(key)
             case ServiceCatalog.STDLIB:
                 self._srv.client._memstore_keyval.pop(key, None)
+            case ServiceCatalog.MINIO:
+                bucket_name, object_name = _get_minio_elements_from_key(key)
+                # Verify if the bucket exists
+                if not self._srv.bucket_exists(bucket_name):
+                    logger.warning(f"Bucket {bucket_name} does not exist.")
+                    return
+                # Verify if the object exists
+                if not self._srv.object_exists(bucket_name, object_name):
+                    logger.warning(f"Object {object_name} in bucket {bucket_name} does not exist.")
+                    return
+                try:
+                    self._srv.client.remove_object(bucket_name, object_name)
+                except Exception as e:
+                    logger.error(f"Error deleting object {object_name} from bucket {bucket_name}: {e}")
             case _:
                 raise NotImplementedError(f"Delete method not implemented for service {self._nme}")
