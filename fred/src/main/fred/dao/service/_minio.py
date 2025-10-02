@@ -44,7 +44,7 @@ class MinioConnectionPool(ServiceConnectionPoolInterface[PoolManager]):
         if not disable_cert:
             import certifi
             cert_reqs = "CERT_REQUIRED"
-            ca_certs=get_environ_variable("SSL_CERT_FILE") or certifi.where()
+            ca_certs = get_environ_variable("SSL_CERT_FILE") or certifi.where()
         # Finally, create and return the PoolManager instance
         return PoolManager(
             num_pools=num_pools,
