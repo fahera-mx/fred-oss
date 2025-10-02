@@ -29,6 +29,7 @@ class ServiceConnectionPoolInterface(Generic[T]):
 
 class ServiceInterface(Generic[T]):
     instance: T
+    metadata: dict
 
     def __init__(self, **kwargs):
         self.config = kwargs
