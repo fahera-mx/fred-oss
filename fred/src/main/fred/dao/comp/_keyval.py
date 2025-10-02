@@ -76,6 +76,9 @@ class FredKeyVal(ComponentInterface):
                     logger.warning("Expiration not implemented for MINIO service.")
                 # Prepare the value as a byte stream
                 value_bytes = value.encode("utf-8")
+                if kwargs.get("b64", False):
+                    import base64
+                    value_bytes = base64.b64decode(value)
                 value_stream = io.BytesIO(value_bytes)
                 value_stream.seek(0)  # Ensure the stream is at the beginning
                 # Put the object into the bucket
