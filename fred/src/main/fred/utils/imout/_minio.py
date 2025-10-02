@@ -22,7 +22,7 @@ class OutputMinio(ImageOutputInterface):
 
         image_key = posixpath.join(bucket, filename)
         image_string = image_to_b64(self.image)
-        self.client(key=image_key).set(image_string,  **kwargs)
+        self.client(key=image_key).set(image_string, b64=True, **kwargs)
         if not presigned:
             return posixpath.join(
                 self.metadata.get("minio_endpoint", ""),
