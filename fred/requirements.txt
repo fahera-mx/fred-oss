@@ -7,4 +7,6 @@ redis==6.4.0
 requests==2.32.5
 fastapi==0.116.2
 uvicorn[standard]==0.35.0
+# Fred Utils
+pillow==11.3.0
 # Databricks Runtime: 16.4 LTS (Python 3.12.3)
