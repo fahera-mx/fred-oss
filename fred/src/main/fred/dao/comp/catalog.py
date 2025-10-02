@@ -87,6 +87,19 @@ class CompCatalog(enum.Enum):
         """
         return self.value
 
+    def mount(self, srv_ref: Optional[SRV_REF_TYPE] = None, **kwargs) -> type[ComponentInterface]:
+        """Mounts the component to a specific service instance.
+        This method configures the component to use a service instance
+        identified by `srv_name` and any additional parameters passed via `kwargs`.
+        
+        Args:
+            srv_ref (Optional[SRV_REF_TYPE]): The service reference to mount the component to.
+            **kwargs: Additional keyword arguments to configure the service instance.
+        Returns:
+            type[ComponentInterface]: The component class mounted to the specified service.
+        """
+        return self.value.mount(srv_ref=srv_ref, **kwargs)
+
     def auto(self, srv_ref: Optional[SRV_REF_TYPE] = None, **kwargs) -> ComponentInterface:
         """Automatically creates an instance of the component, mounting it to a service.
         This method is a convenience wrapper that first mounts the component to a service
