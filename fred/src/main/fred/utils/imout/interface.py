@@ -34,4 +34,4 @@ class ImageOutputInterface(ImageOutputBackendInterface):
         self.image.show()
 
     def out(self, **kwargs) -> str:
-        raise NotImplementedError("Subclasses must implement into_output method.")
+        raise NotImplementedError("Subclasses must implement out method.")
