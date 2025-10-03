@@ -162,6 +162,9 @@ class HandlerInterface:
             for bflag in [broadcast, event.pop("broadcast", None), FRD_WORKER_BROADCAST_DEFAULT, False]:
                 if isinstance(bflag, bool):
                     break
+            else:
+                logger.warning("Could not determine fred-worker broadcast flag... setting to False.")
+                bflag = False
             logger.info(f"Worker future-broadcast flag set to: {bflag}")
             return Future(
                 future_id=future_id,
