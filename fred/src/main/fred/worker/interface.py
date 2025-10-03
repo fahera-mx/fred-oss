@@ -2,7 +2,7 @@ import time
 from typing import overload, Callable, Optional
 from dataclasses import dataclass, field
 
-from fred.worker.settings import FRD_WORKER_DEFAULT_BROADCAST
+from fred.worker.settings import FRD_WORKER_BROADCAST_DEFAULT
 from fred.future.impl import Future  # Should we make this import lazy?
 from fred.utils.dateops import datetime_utcnow
 from fred.settings import (
@@ -159,10 +159,14 @@ class HandlerInterface:
                 If requested as a Future, returns a Future that will resolve to the response dictionary.
         """
         if as_future:
+            for bflag in [broadcast, event.pop("broadcast", None), FRD_WORKER_BROADCAST_DEFAULT, False]:
+                if isinstance(bflag, bool):
+                    break
+            logger.info(f"Worker future-broadcast flag set to: {bflag}")
             return Future(
                 future_id=future_id,
                 function=lambda: self.run(event=event, as_future=False),
-                broadcast=FRD_WORKER_DEFAULT_BROADCAST if broadcast is None else broadcast,
+                broadcast=bflag,
             )
         # Extract payload and event ID
         payload = event.get("input", {})
