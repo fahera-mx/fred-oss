@@ -98,7 +98,9 @@ class CompCatalog(enum.Enum):
         Returns:
             type[ComponentInterface]: The component class mounted to the specified service.
         """
-        return self.value.mount(srv_ref=srv_ref, **kwargs)
+        classname_reference = self.value.__name__
+        classname_derived = f"{classname_reference}Mounted"
+        return type(classname_derived, (self.value,), {}).mount(srv_ref=srv_ref, **kwargs)
 
     def auto(self, srv_ref: Optional[SRV_REF_TYPE] = None, **kwargs) -> ComponentInterface:
         """Automatically creates an instance of the component, mounting it to a service.

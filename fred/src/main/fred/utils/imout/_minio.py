@@ -20,13 +20,13 @@ class OutputMinio(ImageOutputInterface):
     def out(self, bucket: str, filename: str, presigned: bool = False, **kwargs) -> str:
         from fred.utils.imops import image_to_b64
 
-        image_key = posixpath.join(bucket, filename)
         image_string = image_to_b64(self.image)
-        self.client(key=image_key).set(image_string, b64=True, **kwargs)
+        self.client(key=filename).set(image_string, b64=True, bucket=bucket, **kwargs)
         if not presigned:
             return posixpath.join(
                 self.metadata.get("minio_endpoint", ""),
-                image_key,
+                bucket,
+                filename,
             )
         # TODO: Implement the generation of a pre-signed URL
         # https://github.com/minio/minio-py/blob/master/docs/API.md#get_presigned_url
