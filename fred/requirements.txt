@@ -11,4 +11,5 @@ uvicorn[standard]==0.35.0
 minio==7.2.18
 # Fred Utils
 pillow==11.3.0
+torch==2.8.0
 # Databricks Runtime: 16.4 LTS (Python 3.12.3)
