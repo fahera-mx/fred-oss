@@ -49,12 +49,14 @@ def get_dtype(
         default: Optional[str] = None,
     ) -> str | torch.dtype:
     """
-     Determine the data type to use for model inference.
-     Args:
+    Determine the data type to use for model inference.
+    Args:
         dtype (Optional[str]): The desired data type as a string (e.g., "float16", "float32").
         as_str (bool): If True, return the data type as a string; otherwise, return the torch.dtype object.
-        Returns:
-            str | torch.dtype: The data type as a string or torch.dtype object.
+        env_fallback (Optional[str]): The name of the environment variable to use as a fallback for the data type. If not provided, defaults to "FRD_MLOPS_DTYPE".
+        default (Optional[str]): The default data type to use if neither `dtype` nor the environment variable is set.
+    Returns:
+        str | torch.dtype: The data type as a string or torch.dtype object.
     """
     # Early exit for string return
     if as_str:
