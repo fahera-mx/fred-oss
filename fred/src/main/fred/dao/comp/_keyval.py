@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Iterator, Optional
 
 from fred.settings import logger_manager, get_environ_variable
 from fred.dao.service.catalog import ServiceCatalog
@@ -36,6 +36,51 @@ class FredKeyVal(ComponentInterface):
     """
     key: str
     
+    @classmethod
+    def keys(cls, pattern: Optional[str] = None, **kwargs) -> Iterator[str]:
+        """Returns a list of keys matching the given pattern.
+        The implementation of this method depends on the underlying service.
+        For example, if the service is Redis, it uses the KEYS command to get the
+        list of keys matching the pattern.
+        Args:
+            pattern (str): The pattern to match keys against. Defaults to "*".
+        Returns:
+            list[str]: A list of keys matching the pattern.
+        Raises:
+            NotImplementedError: If the method is not implemented for the current service.
+        """
+        match cls._cat:
+            case ServiceCatalog.REDIS:
+                return (
+                    key if isinstance(key, str) else key.decode("utf-8")
+                    for key in cls._srv.client.scan_iter(match=pattern, **kwargs)
+                )
+            case ServiceCatalog.STDLIB:
+                import fnmatch
+                pattern = pattern or "*"
+                return (
+                    key
+                    for key in cls._srv.client._memstore_keyval.keys()
+                    if fnmatch.fnmatch(key, pattern=pattern)
+                )
+            case ServiceCatalog.MINIO:
+                import fnmatch
+                pattern = pattern or "*"
+                bucket_name = (
+                    kwargs.get("bucket", None)
+                    or kwargs.get("minio_bucket", None)
+                    or get_environ_variable("MINIO_BUCKET")
+                )
+                if not bucket_name:
+                    raise ValueError("Missing bucket info to list keys in MinIO service.")
+                return (
+                    key
+                    for obj in cls._srv.objects(bucket_name, **kwargs)
+                    if fnmatch.fnmatch((key := obj.object_name), pattern=pattern)
+                )
+            case _:
+                raise NotImplementedError(f"Keys method not implemented for service {cls._nme}")
+
     def set(self, value: str, key: Optional[str] = None, **kwargs) -> None:
         """Sets a key-value pair in the store.
         The implementation of this method depends on the underlying service.
