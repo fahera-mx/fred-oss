@@ -140,9 +140,11 @@ class RunnerHandler(HandlerInterface):
         runner_status = runner_backend.keyval(
             key=RunnerStatus.get_key(runner_id=runner_id)
         )
-        logger.info(f"Starting runner with ID '{runner_id}' using request-queue '{req_queue.name}'")
+        # Start the runner loop in a future and track its status
+        on_start_queue_size = req_queue.size()
+        logger.info(f"Starting runner '{runner_id}' using req-queue '{req_queue.name}': {on_start_queue_size}")
         runner_status.set(
-            value=RunnerStatus.STARTED.get_val(),
+            value=RunnerStatus.STARTED.get_val(spec.queue_slug, f"Q({on_start_queue_size})"),
             expire=None,
         )
         runner_loop = Future(
@@ -156,7 +158,7 @@ class RunnerHandler(HandlerInterface):
             future_id=runner_id,
         )
         runner_status.set(
-            value=RunnerStatus.RUNNING.get_val(),
+            value=RunnerStatus.RUNNING.get_val(spec.queue_slug, f"Q({req_queue.size()})"),
             expire=None,
         )
         results = {
@@ -180,7 +182,7 @@ class RunnerHandler(HandlerInterface):
                 }
         results["pending_requests"] = pending_requests = req_queue.size()
         runner_status.set(
-            value=RunnerStatus.STOPPED.get_val(str(pending_requests)),
+            value=RunnerStatus.STOPPED.get_val(spec.queue_slug, f"Q({pending_requests})"),
             expire=3600,  # Keep the stopped status for 1 hour
         )
         if pending_requests:
