@@ -61,14 +61,34 @@ class RunnerClient:
         signal = RunnerSignal[signal.upper()] if isinstance(signal, str) else signal
         return signal.send(self.req_queue)
 
-    def runner_status(self, runner_id: str) -> RunnerStatus:
-        runner_status=self._runner_backend.keyval(
-                key=RunnerStatus.get_key(runner_id=runner_id)
-            )
-        if not (value := runner_status.get()):
+    def runner_info(self, runner_id: str) -> tuple[str, RunnerStatus]:
+        runner_status = self._runner_backend.keyval(
+            key=RunnerStatus.get_key(runner_id=runner_id)
+        )
+        if not (out := runner_status.get()):
             logger.warning(f"No status found for runner_id: '{runner_id}'")
             return RunnerStatus.UNDEFINED
-        return RunnerStatus.parse_value(value=value)
+        return RunnerStatus.parse_value(value=out)
+
+    def runner_status(self, runner_id: str) -> RunnerStatus:
+        _, status = self.runner_info(runner_id=runner_id)
+        return status
+
+    def runner_queue(self, runner_id: str) -> str:
+        queue_slug, _ = self.runner_info(runner_id=runner_id)
+        return queue_slug
+
+    def runners(self) -> dict[str, Optional[str]]:
+        return {
+            key: self._runner_backend.keyval(key=key).get()
+            for key in self._runner_backend.keyval.keys(pattern="frd:runner:*")
+        }
+
+    def futures(self) -> dict[str, Optional[str]]:
+        return {
+            key: self._runner_backend.keyval(key=key).get()
+            for key in self._runner_backend.keyval.keys(pattern="frd:future:*:status")
+        }
 
     def send(
             self,
