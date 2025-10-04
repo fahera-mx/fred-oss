@@ -7,6 +7,7 @@ SRV_REF_TYPE = str | ServiceInterface | ServiceCatalog
 
 class SrvCompanionMixin:
     _srv: ServiceInterface
+    _cat: ServiceCatalog
 
     @classmethod
     def _set_srv(cls, srv_ref: Optional[SRV_REF_TYPE] = None, **kwargs):
@@ -19,11 +20,16 @@ class SrvCompanionMixin:
         """
         match (srv_ref or "REDIS"):
             case str() as name:
-                cls._srv = ServiceCatalog[name.upper()].auto(**kwargs)
+                cls._cat = ServiceCatalog[name.upper()]
+                cls._srv = cls._cat.auto(**kwargs)
             case ServiceCatalog() as cat:
+                cls._cat = cat
                 cls._srv = cat.auto(**kwargs)
             case ServiceInterface() as instance:
                 cls._srv = instance
+                cls._cat = ServiceCatalog.from_classname(
+                    classname=instance.__class__.__name__
+                )
             case _:
                 raise ValueError(f"Invalid service '{srv_ref}' type: {type(srv_ref)}")
     
@@ -31,11 +37,6 @@ class SrvCompanionMixin:
     def _nme(self) -> str:
         """Returns the class name of the current service instance."""
         return self._srv.__class__.__name__
-
-    @property
-    def _cat(self) -> ServiceCatalog:
-        """Returns the ServiceCatalog enum member corresponding to the current service instance."""
-        return ServiceCatalog.from_classname(self._nme)
 
 
 class ComponentInterface(SrvCompanionMixin):
