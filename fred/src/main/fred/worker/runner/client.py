@@ -67,7 +67,7 @@ class RunnerClient:
         )
         if not (out := runner_status.get()):
             logger.warning(f"No status found for runner_id: '{runner_id}'")
-            return RunnerStatus.UNDEFINED
+            return ("", RunnerStatus.UNDEFINED)
         return RunnerStatus.parse_value(value=out)
 
     def runner_status(self, runner_id: str) -> RunnerStatus:
