@@ -1,60 +1,12 @@
 from minio import Minio
-from urllib3 import PoolManager, Retry
-from urllib3.util import Timeout
 
-from fred.settings import get_environ_variable, logger_manager
+from fred.settings import logger_manager
+from fred.dao.service.interface import ServiceInterface
 from fred.dao.service.utils import get_minio_from_payload
-from fred.dao.service.interface import ServiceInterface, ServiceConnectionPoolInterface
+from fred.dao.service._minio.pool import MinioConnectionPool
+from fred.dao.service._minio.policy.catalog import MinioPolicyCatalog
 
 logger = logger_manager.get_logger(name=__name__)
-
-
-class MinioConnectionPool(ServiceConnectionPoolInterface[PoolManager]):
-
-    @classmethod
-    def _create_pool(cls, disable_cert: bool = False, **kwargs) -> PoolManager:
-        """Create a urllib3 PoolManager with the given configurations.
-
-        TODO: Consider using the inverse of 'require_cert' as the default to ensure we do have cert-check automatically.
-        For now, we keep it as is to avoid breaking changes.
-
-        Args:
-            require_cert (bool): Whether to require SSL certificate verification.
-            **kwargs: Additional keyword arguments to pass to the PoolManager constructor.
-        Returns:
-            PoolManager: A configured PoolManager instance.
-        """
-        num_pools = kwargs.pop("num_pools", 10)
-        maxsize = kwargs.pop("maxsize", 10)
-        # Default timeout of 5 minutes
-        timeout_seconds = kwargs.pop("timeout", 300)
-        timeout = Timeout(
-            connect=timeout_seconds,
-            read=timeout_seconds,
-        )
-        # Default retries of 5 with exponential backoff
-        retry = Retry(
-            total=kwargs.pop("retries", 5),
-            backoff_factor=kwargs.pop("backoff_factor", 0.25),
-            status_forcelist=[500, 502, 503, 504],
-        )
-        # Configure certificate requirements for SSL connections
-        cert_reqs = "CERT_NONE"
-        ca_certs = None
-        if not disable_cert:
-            import certifi
-            cert_reqs = "CERT_REQUIRED"
-            ca_certs = get_environ_variable("SSL_CERT_FILE") or certifi.where()
-        # Finally, create and return the PoolManager instance
-        return PoolManager(
-            num_pools=num_pools,
-            maxsize=maxsize,
-            timeout=timeout,
-            retries=retry,
-            cert_reqs=cert_reqs,
-            ca_certs=ca_certs,
-            **kwargs
-        )
 
 
 class MinioService(ServiceInterface[Minio]):
@@ -120,3 +72,12 @@ class MinioService(ServiceInterface[Minio]):
         except S3Error:
             logger.debug(f"Object {object_name} in bucket {bucket_name} does not exist.")
             return False
+
+    def make_bucket_public(self, bucket_name: str, readonly: bool = False):
+        """Make a bucket public with either read-only or read-write access."""
+        policy = MinioPolicyCatalog.BUCKET_PUBLIC_RO \
+            if readonly else MinioPolicyCatalog.BUCKET_PUBLIC_RW
+        self.client.set_bucket_policy(
+            bucket_name=bucket_name,
+            policy=policy.content(bucket_name=bucket_name)
+        )
