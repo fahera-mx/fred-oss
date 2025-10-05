@@ -14,7 +14,7 @@ class MinioPolicyCatalog(enum.Enum):
     )
     BUCKET_PUBLIC_RW = MinioPolicyLoader(
         title="[Bucket Policy] Public Read-Write",
-        filename="public_ro.json",
+        filename="public_rw.json",
         requires=[
             "bucket_name",
         ],
