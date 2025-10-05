@@ -35,6 +35,8 @@ setup(
     package_data={
         "": [
             version_filepath,
+            "**/*.json",
+            "**/*.yaml",
         ]
     },
     entry_points={

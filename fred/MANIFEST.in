@@ -1,2 +1,3 @@
 include requirements.txt
 include src/main/fred/version
+include src/main/fred/dao/service/_minio/policy/templates/*.json
