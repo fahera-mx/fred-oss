@@ -2,9 +2,6 @@ import os
 import json
 from dataclasses import dataclass, field
 from typing import Optional
-
-
-
 def load_policy(filename: str, path: Optional[str] = None, **kwargs) -> dict:
     path = path or os.path.join(os.path.dirname(__file__), "templates")
     filepath = os.path.join(path, filename)
