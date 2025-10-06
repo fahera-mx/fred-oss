@@ -2,8 +2,8 @@ import enum
 
 from fred.rest.router.config import RouterConfig
 from fred.rest.router.catalog.interface import RouterCatalogInterface
-from fred.worker.runner.rest.routers._runner import RunnerRouterMixin
-from fred.worker.runner.rest.routers._base import RouterBaseMixin
+from fred.worker.runner.rest.router._runner import RunnerRouterMixin
+from fred.worker.runner.rest.router._base import RouterBaseMixin
 
 
 class RouterCatalog(RouterCatalogInterface, enum.Enum):
