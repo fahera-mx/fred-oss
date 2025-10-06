@@ -5,6 +5,6 @@ logger = logger_manager.get_logger(name=__name__)
 
 
 logger.warning(
-    "You are using the default router catalog inteded for demonstration purposes only. "
+    "You are using the default router catalog intended for demonstration purposes only. "
     "For production use, please implement a custom router catalog."
 )
