@@ -62,7 +62,7 @@ class RouterEndpointAnnotation(RouterEndpoint):
         config = RouterEndpointConfig.auto(**kwargs)
         return lambda function: cls(function=function, configs=config)
 
-    def __get__(self, other, other_type):
+    def __get__(self, other_instance, other_class) -> RouterEndpoint:
         # Create a partial function that binds the instance (other) to the method.
         # This method was originally implemented using the following approaches:
         # - function = functools.partial(self.function, other)
@@ -87,7 +87,10 @@ class RouterEndpointAnnotation(RouterEndpoint):
                     params.update(await request.json())
             except Exception:
                 pass
-            return self.function(other, **params)
+            # Since the annotation is usually applied to methods within a class,
+            # in most cases the 'other_instance' will be 'None'; therefore using 'other_class'
+            # should allow accessing the shared-class level state (e.g., runner_backend).
+            return self.function(other_class, **params)
         return RouterEndpoint(
             function=closure,
             configs=self.configs
