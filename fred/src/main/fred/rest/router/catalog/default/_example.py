@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from fred.rest.router.interface import RouterInterface
+from fred.rest.router.interface import RouterInterfaceMixin
 from fred.rest.router.endpoint import RouterEndpointAnnotation
 
 
-class RouterExampleMixin:
+class RouterExampleMixin(RouterInterfaceMixin):
 
     @RouterEndpointAnnotation.set(
         path="/ping",
@@ -29,8 +29,3 @@ class RouterExampleMixin:
     )
     def passthrough(self, **kwargs) -> dict:
         return kwargs
-
-
-@dataclass(frozen=True, slots=True)
-class RouterExample(RouterInterface, RouterExampleMixin):
-    pass
