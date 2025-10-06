@@ -1,17 +1,24 @@
-from dataclasses import dataclass
 from typing import Optional
 
 from fred.future import Future
 from fred.settings import logger_manager
 from fred.utils.dateops import datetime_utcnow
-from fred.worker.runner.rest.routers.interface import RouterInterface
+from fred.rest.router.interface import RouterInterfaceMixin
+from fred.rest.router.endpoint import RouterEndpointAnnotation
 
 logger = logger_manager.get_logger(name=__name__)
 
 
-class RunnerRouterMethods:
+class RunnerRouterMixin(RouterInterfaceMixin):
 
-    def handler_exists(self, classname: str, classpath: str) -> dict:
+    @RouterEndpointAnnotation.set(
+        path="/handler_exists",
+        methods=["GET"],
+        tags=["Runner"],
+        summary="Check if a handler class exists and is a RunnerHandler.",
+        response_description="Details about the handler class.",
+    )
+    def handler_exists(self, classname: str, classpath: str, **kwargs) -> dict:
         from fred.worker.runner.handler import RunnerHandler
         from fred.worker.interface import HandlerInterface
 
@@ -35,8 +42,15 @@ class RunnerRouterMethods:
             result_payload["metadata"]["error"] = str(e)
             return result_payload
 
-    def qlen(self, queue_slug: str) -> dict:
 
+    @RouterEndpointAnnotation.set(
+        path="/qlen/{queue_slug}",
+        methods=["GET"],
+        tags=["Runner"],
+        summary="Get the length of the request and response queues for a given queue slug.",
+        response_description="The lengths of the request and response queues.",
+    )
+    def qlen(self, queue_slug: str, **kwargs) -> dict:
         snapshot_at = datetime_utcnow().isoformat()
         req_queue = self.runner_backend.queue(f"req:{queue_slug}")
         res_queue = self.runner_backend.queue(f"res:{queue_slug}")
@@ -49,34 +63,48 @@ class RunnerRouterMethods:
             "res": res_queue.size(),
         }
 
-    def runner_start(self, payload: dict) -> dict:
+    @RouterEndpointAnnotation.set(
+        path="/start",
+        methods=["POST"],
+        tags=["Runner"],
+        summary="Start a runner using the specified plugin.",
+        response_description="The ID of the started runner.",
+    )
+    def runner_start(self, **kwargs) -> dict:
         from fred.worker.runner.model.catalog import RunnerModelCatalog
         from fred.worker.runner.plugins.catalog import PluginCatalog
         # Determine which plugin to use; default to LOCAL if not specified
-        plugin_name: str = payload.pop("plugin", "LOCAL")
-        wait_for_exec: bool = payload.pop("wait_for_exec", False)
+        plugin_name: str = kwargs.pop("plugin", "LOCAL")
+        wait_for_exec: bool = kwargs.pop("wait_for_exec", False)
         # Create the RunnerSpec from the provided payload
         # TODO: Instead on depending on parsing a dict... Can we implement a base-model to facilitate fast-api validation?
-        runner_spec = RunnerModelCatalog.RUNNER_SPEC.value.from_payload(payload=payload)
+        runner_spec = RunnerModelCatalog.RUNNER_SPEC.value.from_payload(payload=kwargs)
         # Instantiate the plugin and execute the runner
         plugin = PluginCatalog[plugin_name.upper()]()
-        output = plugin.execute(runner_spec, wait_for_exec=wait_for_exec, **payload)
+        output = plugin.execute(runner_spec, wait_for_exec=wait_for_exec, **kwargs)
         return {
             "runner_id": output.runner_id,
             "future_id": output.future_exec.future_id,
             "queue_slug": runner_spec.queue_slug,
         }
-    
-    def runner_execute(self, payload: dict) -> dict:
+
+    @RouterEndpointAnnotation.set(
+        path="/execute",
+        methods=["POST"],
+        tags=["Runner"],
+        summary="Execute a task by dispatching a request to the specified queue.",
+        response_description="Details about the dispatched request.",
+    )
+    def runner_execute(self, **kwargs) -> dict:
         from fred.worker.runner.model.catalog import RunnerModelCatalog
 
-        request_id = payload.pop("request_id", None)
-        queue_slug = payload.pop("queue_slug", None) or (
+        request_id = kwargs.pop("request_id", None)
+        queue_slug = kwargs.pop("queue_slug", None) or (
             logger.error("No 'queue_slug' value provided; defaulting to 'demo'.")
             or "demo"
         )
 
-        item = RunnerModelCatalog.ITEM.value.uuid(payload=payload, uuid_hash=False)
+        item = RunnerModelCatalog.ITEM.value.uuid(payload=kwargs, uuid_hash=False)
         request = item.as_request(use_hash=False, request_id=request_id)
         request.dispatch(
             request_queue=self.runner_backend.queue(f"req:{queue_slug}")
@@ -88,7 +116,14 @@ class RunnerRouterMethods:
             "dispatched_at": datetime_utcnow().isoformat(),
         }
 
-    def runner_output(self, request_id: str, nonblocking: bool = False, timeout: Optional[float] = None) -> dict:
+    @RouterEndpointAnnotation.set(
+        path="/output/{request_id}",
+        methods=["GET"],
+        tags=["Runner"],
+        summary="Fetch the output of a previously dispatched request.",
+        response_description="The output of the request.",
+    )
+    def runner_output(self, request_id: str, nonblocking: bool = False, timeout: Optional[float] = None, **kwargs) -> dict:
 
         output_requested_at = datetime_utcnow().isoformat()
         # Subscribe to the future result using the request_id
@@ -102,49 +137,3 @@ class RunnerRouterMethods:
             "output_delivered_at": datetime_utcnow().isoformat(),
             "output": future.wait_and_resolve(timeout=timeout),
         }
-
-
-@dataclass(frozen=True, slots=False)
-class RunnerRouter(RouterInterface.with_backend(), RunnerRouterMethods):
-
-    def __post_init__(self):
-        self.router.add_api_route(
-            "/handler_exists",
-            self.handler_exists,
-            methods=["GET"],
-            tags=["Runner"],
-            summary="Check if a handler class exists and is a RunnerHandler.",
-            response_description="Details about the handler class.",
-        )
-        self.router.add_api_route(
-            "/qlen/{queue_slug}",
-            self.qlen,
-            methods=["GET"],
-            tags=["Runner"],
-            summary="Get the length of the request and response queues for a given queue slug.",
-            response_description="The lengths of the request and response queues.",
-        )
-        self.router.add_api_route(
-            "/start",
-            self.runner_start,
-            methods=["POST"],
-            tags=["Runner"],
-            summary="Start a runner using the specified plugin.",
-            response_description="The ID of the started runner.",
-        )
-        self.router.add_api_route(
-            "/execute",
-            self.runner_execute,
-            methods=["POST"],
-            tags=["Runner"],
-            summary="Execute a task by dispatching a request to the specified queue.",
-            response_description="Details about the dispatched request.",
-        )
-        self.router.add_api_route(
-            "/output/{request_id}",
-            self.runner_output,
-            methods=["GET"],
-            tags=["Runner"],
-            summary="Fetch the output of a previously dispatched request.",
-            response_description="The output of the request.",
-        )
