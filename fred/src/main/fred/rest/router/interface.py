@@ -70,16 +70,8 @@ class RouterInterface(RouterInterfaceMixin):
             instance.register_endpoint(endpoint)
         return instance
 
-    def register_function(self, function: Callable, path: Optional[str] = None,  **kwargs):
-        endpoint = RouterEndpoint.set(**kwargs)(function)
-        route_config =endpoint.route_config(path=path)
-        self.router.add_api_route(endpoint=function, **route_config)
-
     def register_endpoint(self, endpoint: RouterEndpoint, path: Optional[str] = None):
         route_config = endpoint.route_config(path=path)
-        print(endpoint)
-        print(route_config)
-        print(endpoint.function)
         self.router.add_api_route(endpoint=endpoint.function, **route_config)
 
     @classmethod
