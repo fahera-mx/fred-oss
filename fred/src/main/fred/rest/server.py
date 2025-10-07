@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 
 from fred.settings import (
     get_environ_variable,
@@ -58,6 +59,14 @@ class FredServer:
         kwargs["dependencies"] = kwargs.get("dependencies", []) + auth_dependency
         # Create FastAPI app instance
         app_instance = FastAPI(**kwargs)
+        app_instance.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],  # TODO: Parameterize via env.variables
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
         router_classname = kwargs.pop("router_classname", None)
         router_classpath = kwargs.pop("router_classpath", None)
         return cls(
