@@ -136,7 +136,7 @@ class FredKeyVal(ComponentInterface):
             case _:
                 raise NotImplementedError(f"Set method not implemented for service {self._nme}")
 
-    def get(self, key: Optional[str] = None, fail: bool = False) -> Optional[str]:
+    def get(self, key: Optional[str] = None, fail: bool = False, **kwargs) -> Optional[str]:
         """Gets the value associated with a key from the store.
         The implementation of this method depends on the underlying service.
         For example, if the service is Redis, it uses the GET command to retrieve the
@@ -173,21 +173,32 @@ class FredKeyVal(ComponentInterface):
                         raise KeyError(f"Object {object_name} not found in bucket {bucket_name}.")
                     return None
                 try:
-                    response = self._srv.client.get_object(bucket_name, object_name)
-                    result_bytes = response.read()
-                    result = result_bytes.decode("utf-8")
+                    if kwargs.pop("presigned_url", False):
+                        result = self._srv.object_presigned_url(bucket_name, object_name, **kwargs)
+                    else:
+                        response = self._srv.client.get_object(bucket_name, object_name)
+                        result_bytes = response.read()
+                        try:
+                            # This should work for most cases where original text data was stored (e.g., JSON, YAML, CSVs, etc.)
+                            result = result_bytes.decode("utf-8")
+                        except UnicodeDecodeError:
+                            import base64
+                            # This should work for binary data (e.g., images, PDFs, etc.)
+                            result = base64.b64encode(result_bytes).decode("ascii")
+                        finally:
+                            response.close()
+                            response.release_conn()
                 except Exception as e:
                     logger.error(f"Error retrieving object {object_name} from bucket {bucket_name}: {e}")
                     result = None
                     if fail:
                         raise KeyError(f"Object {object_name} not found in bucket {bucket_name}.")
-                finally:
-                    response.close()
-                    response.release_conn()
             case _:
                 raise NotImplementedError(f"Get method not implemented for service {self._nme}")
         if fail and result is None:
             raise KeyError(f"Key {key} not found.")
+        if kwargs:
+            logger.warning(f"Additional kwargs ignored: {kwargs}")
         return result
 
     def delete(self, key: Optional[str] = None) -> None:
