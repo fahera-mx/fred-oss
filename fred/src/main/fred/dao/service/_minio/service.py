@@ -1,3 +1,5 @@
+import datetime as dt
+
 from minio import Minio
 
 from fred.settings import logger_manager
@@ -61,6 +63,15 @@ class MinioService(ServiceInterface[Minio]):
             "content_type": stat.content_type,
             "metadata": stat.metadata,
         }
+
+    def object_presigned_url(self, bucket_name: str, object_name: str, expiration_hours: int = 6, **kwargs) -> str:
+        """Generate a presigned URL for an object in a specific bucket in the MinIO instance."""
+        return self.client.presigned_get_object(
+            bucket_name=bucket_name,
+            object_name=object_name,
+            expires=dt.timedelta(hours=expiration_hours),
+            **kwargs,
+        )
 
     def object_exists(self, bucket_name: str, object_name: str) -> bool:
         """Check if an object exists in a specific bucket in the MinIO instance."""
