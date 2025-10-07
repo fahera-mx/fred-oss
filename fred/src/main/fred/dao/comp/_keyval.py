@@ -61,7 +61,7 @@ class FredKeyVal(ComponentInterface):
                 return (
                     key
                     for key in cls._srv.client._memstore_keyval.keys()
-                    if fnmatch.fnmatch(key, pattern=pattern)
+                    if fnmatch.fnmatch(key, pat=pattern)
                 )
             case ServiceCatalog.MINIO:
                 import fnmatch
@@ -79,8 +79,8 @@ class FredKeyVal(ComponentInterface):
                 }
                 return (
                     key
-                    for obj in cls._srv.objects(bucket_name, **obj_list_extras)
-                    if fnmatch.fnmatch((key := obj.object_name), pattern=pattern)
+                    for key in cls._srv.objects(bucket_name, **obj_list_extras)
+                    if fnmatch.fnmatch(key, pat=pattern)
                 )
             case _:
                 raise NotImplementedError(f"Keys method not implemented for service {cls._nme}")
