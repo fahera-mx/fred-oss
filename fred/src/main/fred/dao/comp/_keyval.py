@@ -61,7 +61,7 @@ class FredKeyVal(ComponentInterface):
                 return (
                     key
                     for key in cls._srv.client._memstore_keyval.keys()
-                    if fnmatch.fnmatch(key, pattern=pattern)
+                    if fnmatch.fnmatch(key, pat=pattern)
                 )
             case ServiceCatalog.MINIO:
                 import fnmatch
@@ -73,13 +73,19 @@ class FredKeyVal(ComponentInterface):
                 )
                 if not bucket_name:
                     raise ValueError("Missing bucket info to list keys in MinIO service.")
+                obj_list_extras = {
+                    "prefix": kwargs.pop("prefix", ""),
+                    "shallow": kwargs.pop("shallow", False),
+                }
                 return (
                     key
-                    for obj in cls._srv.objects(bucket_name, **kwargs)
-                    if fnmatch.fnmatch((key := obj.object_name), pattern=pattern)
+                    for key in cls._srv.objects(bucket_name, **obj_list_extras)
+                    if fnmatch.fnmatch(key, pat=pattern)
                 )
             case _:
                 raise NotImplementedError(f"Keys method not implemented for service {cls._nme}")
+        if kwargs:
+            logger.warning(f"Additional kwargs ignored: {kwargs}")
 
     def set(self, value: str, key: Optional[str] = None, **kwargs) -> None:
         """Sets a key-value pair in the store.
@@ -135,6 +141,8 @@ class FredKeyVal(ComponentInterface):
                 )
             case _:
                 raise NotImplementedError(f"Set method not implemented for service {self._nme}")
+        if kwargs:
+            logger.warning(f"Additional kwargs ignored: {kwargs}")
 
     def get(self, key: Optional[str] = None, fail: bool = False, **kwargs) -> Optional[str]:
         """Gets the value associated with a key from the store.

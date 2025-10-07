@@ -1,4 +1,5 @@
 import datetime as dt
+from typing import Iterator
 
 from minio import Minio
 
@@ -40,12 +41,12 @@ class MinioService(ServiceInterface[Minio]):
             for bucket in self.client.list_buckets()
         ]
 
-    def objects(self, bucket_name: str, prefix: str = "", shallow: bool = False) -> list[str]:
+    def objects(self, bucket_name: str, prefix: str = "", shallow: bool = False) -> Iterator[str]:
         """List all objects in a specific bucket in the MinIO instance."""
-        return [
+        return (
             obj.object_name
             for obj in self.client.list_objects(bucket_name, prefix=prefix, recursive=not shallow)
-        ]
+        )
 
     def bucket_exists(self, bucket_name: str) -> bool:
         """Check if a bucket exists in the MinIO instance."""
