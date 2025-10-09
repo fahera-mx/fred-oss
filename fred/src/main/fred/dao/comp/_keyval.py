@@ -11,9 +11,16 @@ logger = logger_manager.get_logger(name=__name__)
 def _get_minio_elements_from_key(key: str, **kwargs) -> tuple[str, str]:
     import os
 
-    fullpath = os.path.join(
-        kwargs.pop("bucket_name", get_environ_variable("MINIO_BUCKET")) or "",
-        key
+    for bucket_key in ("bucket", "minio_bucket", "bucket_name"):
+        if bucket_key in kwargs:
+            bucket_name = kwargs.pop(bucket_key)
+            break
+    else:
+        bucket_name = get_environ_variable("MINIO_BUCKET") or os.path.dirname(key)
+
+    fullpath = key if key.startswith(bucket_name) else os.path.join(
+        bucket_name,
+        key,
     )
     bucket_name = os.path.dirname(fullpath)
     object_name = os.path.basename(fullpath)
