@@ -109,11 +109,18 @@ class RunnerRouterMixin(RouterInterfaceMixin):
         request.dispatch(
             request_queue=self.runner_backend.queue(f"req:{queue_slug}")
         )
+        # Starting the runner to process the request if requested; this should always be BEFORE placing the request in the queue
+        # to avoid race conditions where a blocking runner is spawned before the request is enqueued.
+        # TODO: Let's optimize this by identifying if there's already an on-going runner for the same spec.
+        # If so, we can potentially reuse it instead of starting a new one each time.
+        runner_start_output = self.runner_start(**start_configs) \
+            if (start_configs := kwargs.pop("start_kwargs", {})) else {}
         return {
             "item_id": item.item_id,
             "request_id": request.request_id,
             "queue_slug": queue_slug,
             "dispatched_at": datetime_utcnow().isoformat(),
+            "runner_start_output": runner_start_output,
         }
 
     @RouterEndpointAnnotation.set(
