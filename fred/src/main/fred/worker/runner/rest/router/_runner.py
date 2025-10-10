@@ -113,8 +113,9 @@ class RunnerRouterMixin(RouterInterfaceMixin):
         # to avoid race conditions where a blocking runner is spawned before the request is enqueued.
         # TODO: Let's optimize this by identifying if there's already an on-going runner for the same spec.
         # If so, we can potentially reuse it instead of starting a new one each time.
-        runner_start_output = self.runner_start(**start_configs) \
-            if (start_configs := kwargs.pop("start_kwargs", {})) else {}
+        # TODO: Let's remove the '_og' reference and find a cleaner way to handle this...
+        runner_start_output = self.runner_start._og(self, **start_configs) \
+            if (start_configs := kwargs.pop("start_configs", {})) else {}
         return {
             "item_id": item.item_id,
             "request_id": request.request_id,
