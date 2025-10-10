@@ -31,6 +31,7 @@ class RouterEndpointConfig:
 class RouterEndpoint:
     function: Callable
     configs: RouterEndpointConfig
+    _og: Optional[Callable] = None  # Original function before any binding... this is mainly for testing purposes.
 
     def __call__(self, *args, **kwargs):
         return self.function(*args, **kwargs)
@@ -93,5 +94,6 @@ class RouterEndpointAnnotation(RouterEndpoint):
             return self.function(other_class, **params)
         return RouterEndpoint(
             function=closure,
-            configs=self.configs
+            configs=self.configs,
+            _og=self.function,
         )
