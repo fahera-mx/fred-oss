@@ -19,7 +19,7 @@ def _get_minio_elements_from_key(key: str, **kwargs) -> tuple[str, str]:
         bucket_name_candidate = get_environ_variable("MINIO_BUCKET") or os.path.dirname(key)
 
     fullpath = key if key.startswith(bucket_name_candidate + os.sep) else os.path.join(
-        bucket_name,
+        bucket_name_candidate,
         key,
     )
     # We only want the first component as bucket name, the rest is the object name
