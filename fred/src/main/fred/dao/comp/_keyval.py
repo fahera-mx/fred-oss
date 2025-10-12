@@ -13,17 +13,18 @@ def _get_minio_elements_from_key(key: str, **kwargs) -> tuple[str, str]:
 
     for bucket_key in ("bucket", "minio_bucket", "bucket_name"):
         if bucket_key in kwargs:
-            bucket_name = kwargs.pop(bucket_key)
+            bucket_name_candidate = kwargs.pop(bucket_key)
             break
     else:
-        bucket_name = get_environ_variable("MINIO_BUCKET") or os.path.dirname(key)
+        bucket_name_candidate = get_environ_variable("MINIO_BUCKET") or os.path.dirname(key)
 
-    fullpath = key if key.startswith(bucket_name + '/') else os.path.join(
+    fullpath = key if key.startswith(bucket_name_candidate + os.sep) else os.path.join(
         bucket_name,
         key,
     )
-    bucket_name = os.path.dirname(fullpath)
-    object_name = os.path.basename(fullpath)
+    # We only want the first component as bucket name, the rest is the object name
+    bucket_name, *obj_components = os.path.normpath(fullpath).split(os.sep)
+    object_name = os.path.join(*obj_components)
     if not bucket_name:
         raise ValueError(
             "Bucket name must be specified either in kwargs, environment variable MINIO_BUCKET, "
