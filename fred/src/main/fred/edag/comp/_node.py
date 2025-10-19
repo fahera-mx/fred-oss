@@ -47,3 +47,61 @@ class NodeFun:
             self.inner,
             tuple(self.signature.parameters.items()),
         ))
+
+
+@dataclass(frozen=True, slots=True)
+class Node(ComponentInterface):
+    name: str
+    nfun: NodeFun
+    # TODO: let's make the 'params' a frozenset (i.e., frozenparams) instead of a dict to ensure immutability
+    params: dict = field(default_factory=dict)
+    inplace: bool = False
+
+    def __hash__(self):
+        obj = asdict(self)
+        obj["nfun"] = self.nfun.__hash__()
+        obj["params"] = frozenset((obj.get("params") or {}).keys())  # only hash keys to avoid unhashable values
+        return hash(frozenset(obj.items()))
+
+    @classmethod
+    def auto(
+            cls,
+            function: Callable,
+            inplace: bool = False,
+            **params,
+    ):
+        name = params.pop("name", None) or getattr(function, "__name__", "undefined")
+        return cls(
+            name=name,
+            nfun=NodeFun.auto(function=function),
+            inplace=inplace,
+            params=params,
+        )
+
+    @property
+    def fun(self) -> Callable:
+        return self.nfun
+
+    def with_alias(self, alias: str) -> "Node":
+        return self.with_params(alias=alias)
+
+    def with_params(self, **params) -> "Node":
+        return self.__class__(
+            name=self.name,
+            nfun=self.nfun,
+            params={
+                **self.params,
+                **params,
+            },
+            inplace=self.inplace,
+        )
+
+    def execute(self, **kwargs):
+        params = {
+            **self.params,
+            **kwargs
+        }
+        if self.inplace:
+            return self.fun(**params)
+        from fred.future.impl import Future
+        return Future(self.fun, **params)
