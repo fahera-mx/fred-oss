@@ -13,7 +13,7 @@ class ComponentInterface:
             case Node(), Group():
                 return Group(nodes=[self, *other.nodes])
             case Group(), Node():
-                return Group(nodes=[*other.nodes, other])
+                return Group(nodes=[*self.nodes, other])
             case Group(), Group():
                 return Group(nodes=[*self.nodes, *other.nodes])
             case _:
