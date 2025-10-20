@@ -11,7 +11,7 @@ from fred.edag.plan import Plan
 @dataclass(frozen=True, slots=True)
 class Executor:
     predmap: dict[CompCatalog.NODE.ref, set[CompCatalog.NODE.ref]]
-    results: dict[str, dict[CompCatalog.NODE.ref, Any]] = field(default_factory=dict)
+    results: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     @classmethod
     def from_plan(cls, plan: Plan, **kwargs) -> "Executor":
