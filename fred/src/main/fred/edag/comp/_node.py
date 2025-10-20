@@ -1,3 +1,4 @@
+import uuid
 from inspect import Signature, signature, Parameter
 from dataclasses import dataclass, field, asdict
 from typing import Callable
@@ -58,6 +59,7 @@ class Node(ComponentInterface):
     nfun: NodeFun
     # TODO: let's make the 'params' a frozenset (i.e., frozenparams) instead of a dict to ensure immutability
     params: dict = field(default_factory=dict)
+    nid: str = field(default_factory=lambda: str(uuid.uuid4()))
     inplace: bool = False
 
     def __hash__(self):
@@ -65,6 +67,18 @@ class Node(ComponentInterface):
         obj["nfun"] = self.nfun.__hash__()
         obj["params"] = frozenset((obj.get("params") or {}).keys())  # only hash keys to avoid unhashable values
         return hash(frozenset(obj.items()))
+
+    def clone(self, **kwargs) -> "Node":
+        return Node(
+            **{
+                "name": self.name,
+                "nfun": self.nfun,
+                "params": self.params,
+                "inplace": self.inplace,
+                **kwargs,
+            },
+            nid=str(uuid.uuid4()),  # Must have a new ID
+        )
 
     @classmethod
     def auto(
