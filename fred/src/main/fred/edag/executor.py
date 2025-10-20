@@ -20,12 +20,12 @@ class Executor:
     def get_tsort(self) -> TopologicalSorter:
         return TopologicalSorter(self.predmap)
         
-    def loop(self, run_id: str, tsort: TopologicalSorter, prev_layer: list[list[str]], unrestrict: bool = False):
+    def loop(self, run_id: str, tsort: TopologicalSorter, prev_layer: list[list[str]], unrestricted: bool = False):
         if not (nodes := tsort.get_ready()):
             return prev_layer
-        # You can only get access to results of previous layers unless unrestrict is requested.
+        # You can only get access to results of previous layers unless unrestricted is requested.
         # TODO: Actually... we should only allow access to direct predecessors (i.e., connected upstream nodes).
-        accessible_results = self.results[run_id] if unrestrict else {
+        accessible_results = self.results[run_id] if unrestricted else {
             key: val
             for key, val in self.results[run_id].items()
             if key in prev_layer[-1]
@@ -44,9 +44,9 @@ class Executor:
             tsort.done(node)
             curr_layer.append(node.name)
         prev_layer.append(curr_layer)
-        return self.loop(run_id=run_id, tsort=tsort, prev_layer=prev_layer, unrestrict=unrestrict)
+        return self.loop(run_id=run_id, tsort=tsort, prev_layer=prev_layer, unrestricted=unrestricted)
 
-    def execute(self, keep: bool = False, unrestrict: bool = False, start_with: Optional[dict] = None) -> dict:
+    def execute(self, keep: bool = False, unrestricted: bool = False, start_with: Optional[dict] = None) -> dict:
         from fred.utils.dateops import datetime_utcnow
 
         run_id = str(uuid.uuid4())
@@ -59,7 +59,7 @@ class Executor:
         tsort = self.get_tsort()
         tsort.prepare()
         # Execute nodes in topological order
-        layers = self.loop(run_id=run_id, tsort=tsort, prev_layer=[[*start_with.keys()]], unrestrict=unrestrict)
+        layers = self.loop(run_id=run_id, tsort=tsort, prev_layer=[[*start_with.keys()]], unrestricted=unrestricted)
         return {
             "run_id": run_id,
             "run_start": run_start,
