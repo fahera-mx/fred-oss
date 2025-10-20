@@ -48,14 +48,26 @@ class Executor:
                 for key, val in prev_layer_results.items()
                 if key in parents
             }
+            kwargs = {
+                **start_with,
+                **{
+                    arg: val
+                    for node_key, node_out in accessible_results.items()
+                    for arg, val in node_out.items()
+                }
+            }
             # Execute node function
-            match node.execute(**{**start_with, **accessible_results}):
+            match node.execute(**kwargs):
                 case Future() as future:
                     # Can't we just build the whole graph in the future and 'wait_and_resolve' only at the end?
                     # Or at least per layer/generation?
-                    self.results[run_id][node.name] = future.wait_and_resolve()
+                    output = {node.key: future.wait_and_resolve()}
                 case present:
-                    self.results[run_id][node.name] = present
+                    output = {node.key: present}
+            self.results[run_id][node.name] = {
+                **self.results[run_id].get(node.name, {}),
+                **output,
+            }
             # Mark node as done
             tsort.done(node)
             curr_layer.append(node.name)

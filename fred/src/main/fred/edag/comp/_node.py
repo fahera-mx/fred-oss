@@ -1,7 +1,7 @@
 import uuid
 from inspect import Signature, signature, Parameter
 from dataclasses import dataclass, field, asdict
-from typing import Callable
+from typing import Callable, Optional
 
 from fred.edag.comp.interface import ComponentInterface
 
@@ -56,6 +56,7 @@ class NodeFun:
 @dataclass(frozen=True, slots=True)
 class Node(ComponentInterface):
     name: str
+    key: str  # Output key
     nfun: NodeFun
     # TODO: let's make the 'params' a frozenset (i.e., frozenparams) instead of a dict to ensure immutability
     params: dict = field(default_factory=dict)
@@ -72,6 +73,7 @@ class Node(ComponentInterface):
         return Node(
             **{
                 "name": self.name,
+                "key": self.key,
                 "nfun": self.nfun,
                 "params": self.params,
                 "inplace": self.inplace,
@@ -85,11 +87,14 @@ class Node(ComponentInterface):
             cls,
             function: Callable,
             inplace: bool = False,
+            name: Optional[str] = None,
+            key: Optional[str] = None,
             **params,
     ):
-        name = params.pop("name", None) or getattr(function, "__name__", "undefined")
+        name = name or getattr(function, "__name__", "undefined")
         return cls(
             name=name,
+            key=key or name,
             nfun=NodeFun.auto(function=function),
             inplace=inplace,
             params=params,
@@ -99,18 +104,23 @@ class Node(ComponentInterface):
     def fun(self) -> Callable:
         return self.nfun
 
-    def with_alias(self, alias: str) -> "Node":
+    def with_output(self, key: str) -> "Node":
+        return self.with_alias(alias=self.name, key=key, keep_key=False)
+
+    def with_alias(self, alias: str, key: Optional[str] = None, keep_key: bool = False) -> "Node":
         return self.__class__(
             name=alias,
+            key=key or (self.key if keep_key else alias),
             nfun=self.nfun,
             params=self.params,
             inplace=self.inplace,
         )
 
-    def with_params(self, **params) -> "Node":
+    def with_params(self, update_key: Optional[str] = None, **params) -> "Node":
         return self.__class__(
             name=self.name,
             nfun=self.nfun,
+            key=update_key or self.key,
             params={
                 **self.params,
                 **params,
