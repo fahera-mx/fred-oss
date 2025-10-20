@@ -86,7 +86,12 @@ class Node(ComponentInterface):
         return self.nfun
 
     def with_alias(self, alias: str) -> "Node":
-        return self.with_params(alias=alias)
+        return self.__class__(
+            name=alias,
+            nfun=self.nfun,
+            params=self.params,
+            inplace=self.inplace,
+        )
 
     def with_params(self, **params) -> "Node":
         return self.__class__(
