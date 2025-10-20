@@ -1,4 +1,4 @@
-from inspect import Signature, signature, _ParameterKind
+from inspect import Signature, signature, Parameter
 from dataclasses import dataclass, field, asdict
 from typing import Callable
 
@@ -20,7 +20,7 @@ class NodeFun:
     def validate_parameter_compliance(self, *args, **kwargs) -> dict:
         # Determine if the signature accepts **kwargs
         var_kwargs = any(
-            p.kind == _ParameterKind.VAR_KEYWORD
+            p.kind == Parameter.VAR_KEYWORD
             for p in self.signature.parameters.values()
         )
         # Validate keywords against signature if not accepting **kwargs
