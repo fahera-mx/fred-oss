@@ -2,6 +2,8 @@
 fire==0.7.1
 # Minimal requirements
 psutil==7.0.0
+# Fred Core Implementation
+cloudpickle==3.1.1
 # Fred Worker/Runner Infra
 redis==6.4.0
 requests==2.32.5
