@@ -42,6 +42,9 @@ class NodeFun:
         params = self.validate_parameter_compliance(*args, **kwargs)
         return self.inner(**params)
     
+    def __name__(self):
+        return getattr(self.inner, "__name__", "undefined")
+
     def __hash__(self):
         return hash((
             self.inner,
