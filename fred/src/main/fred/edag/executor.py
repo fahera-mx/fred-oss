@@ -20,20 +20,36 @@ class Executor:
     def get_tsort(self) -> TopologicalSorter:
         return TopologicalSorter(self.predmap)
         
-    def loop(self, run_id: str, tsort: TopologicalSorter, prev_layer: list[list[str]], unrestricted: bool = False):
+    def loop(
+            self,
+            run_id: str,
+            tsort: TopologicalSorter,
+            prev_layer: list[list[str]],
+            start_with: Optional[dict] = None,
+            unrestricted: bool = False,
+    ) -> list[list[str]]:
+        start_with = start_with or {}
         if not (nodes := tsort.get_ready()):
             return prev_layer
         # You can only get access to results of previous layers unless unrestricted is requested.
-        # TODO: Actually... we should only allow access to direct predecessors (i.e., connected upstream nodes).
-        accessible_results = self.results[run_id] if unrestricted else {
+        prev_layer_results = self.results[run_id] if unrestricted else {
             key: val
             for key, val in self.results[run_id].items()
             if key in prev_layer[-1]
         }
         curr_layer = []
         for node in nodes:
+            parents = [
+                parent.name
+                for parent in self.predmap.get(node, [])
+            ]
+            accessible_results = prev_layer_results if unrestricted else {
+                key: val
+                for key, val in prev_layer_results.items()
+                if key in parents
+            }
             # Execute node function
-            match node.execute(**accessible_results):
+            match node.execute(**{**start_with, **accessible_results}):
                 case Future() as future:
                     # Can't we just build the whole graph in the future and 'wait_and_resolve' only at the end?
                     # Or at least per layer/generation?
@@ -44,7 +60,13 @@ class Executor:
             tsort.done(node)
             curr_layer.append(node.name)
         prev_layer.append(curr_layer)
-        return self.loop(run_id=run_id, tsort=tsort, prev_layer=prev_layer, unrestricted=unrestricted)
+        return self.loop(
+            run_id=run_id,
+            tsort=tsort,
+            prev_layer=prev_layer,
+            unrestricted=unrestricted,
+            start_with={},  # Only availabe during the first layer call
+        )
 
     def execute(self, keep: bool = False, unrestricted: bool = False, start_with: Optional[dict] = None) -> dict:
         from fred.utils.dateops import datetime_utcnow
@@ -52,14 +74,19 @@ class Executor:
         run_id = str(uuid.uuid4())
         run_start = datetime_utcnow()
         # Initialize in-memory result storage for this run
-        # TODO: Swap this to our fred-keyval store
-        start_with = start_with or {}
-        self.results[run_id] = start_with
+        # TODO: Swap the result-store to our fred-keyval implementation
+        self.results[run_id] = {}
         # Prepare TopologicalSorter
         tsort = self.get_tsort()
         tsort.prepare()
         # Execute nodes in topological order
-        layers = self.loop(run_id=run_id, tsort=tsort, prev_layer=[[*start_with.keys()]], unrestricted=unrestricted)
+        layers = self.loop(
+            run_id=run_id,
+            tsort=tsort,
+            prev_layer=[[]],
+            unrestricted=unrestricted,
+            start_with=start_with or {},
+        )
         return {
             "run_id": run_id,
             "run_start": run_start,
