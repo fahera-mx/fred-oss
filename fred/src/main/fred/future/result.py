@@ -133,15 +133,15 @@ class FutureResult(Generic[A], FutureBackend.infer_backend()):
         return self._get_obj_key(future_id=self.future_id)
 
     def stringify(self) -> str:
-        import pickle
+        import dill
         import base64
-        return base64.b64encode(pickle.dumps(self)).decode("ascii")
+        return base64.b64encode(dill.dumps(self)).decode("ascii")
 
     @classmethod
     def from_string(cls, payload: str) -> 'FutureResult[A]':
-        import pickle
+        import dill
         import base64
-        return pickle.loads(base64.b64decode(payload))
+        return dill.loads(base64.b64decode(payload))
     
     def _from_backend(self) -> Optional['FutureResult[A]']:
         payload = self.obj.get()
