@@ -8,12 +8,16 @@ from fred.edag.comp.interface import ComponentInterface
 
 @dataclass(frozen=True, slots=True)
 class NodeFun:
+    fname: str
     inner: Callable
     signature: Signature
+    
 
     @classmethod
-    def auto(cls, function: Callable) -> "NodeFun":
+    def auto(cls, function: Callable, name: Optional[str] = None) -> "NodeFun":
+        fname = name or getattr(function, "__name__", "undefined")
         return cls(
+            fname=fname,
             inner=function,
             signature=signature(function),
         )
@@ -44,7 +48,7 @@ class NodeFun:
         return self.inner(*params["args"], **params["kwargs"])
     
     def __name__(self):
-        return getattr(self.inner, "__name__", "undefined")
+        return self.fname
 
     def __hash__(self):
         return hash((
@@ -99,11 +103,21 @@ class Node(ComponentInterface):
             nid=str(uuid.uuid4()),  # Must have a new ID
         )
 
+    def wrap(self, function: Callable) -> "Node":
+        fname = getattr(function, "__name__", "undef_wrapper_function")
+        return self.clone(
+            nfun=NodeFun.auto(
+                name=fname,
+                function=lambda *args, **kwargs: function(self.fun(*args, **kwargs))
+            ),
+        )
+
     @classmethod
     def auto(
             cls,
             function: Callable,
             inplace: bool = False,
+            fname: Optional[str] = None,
             name: Optional[str] = None,
             key: Optional[str] = None,
             **params,
@@ -112,7 +126,7 @@ class Node(ComponentInterface):
         return cls(
             name=name,
             key=key or name,
-            nfun=NodeFun.auto(function=function),
+            nfun=NodeFun.auto(function=function, name=fname),
             _inplace=inplace,
             params=params,
         )
