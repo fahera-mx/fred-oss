@@ -67,7 +67,7 @@ class Executor:
             if (iterator := kwargs.pop("*", None)):
                 logger.debug(f"Executor mapping functionality detected: Node '{node.name}' executing in iterator mode.")
                 # TODO: https://github.com/fahera-mx/fred-oss/issues/179
-                # TODO: Can we consider explotingi the item components?
+                # TODO: Can we consider exploiting the item components?
                 node_output = [
                     node.execute(item)
                     for item in iterator
