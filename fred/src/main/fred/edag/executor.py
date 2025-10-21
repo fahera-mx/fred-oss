@@ -27,6 +27,7 @@ class Executor:
             prev_layer: list[list[str]],
             start_with: Optional[dict] = None,
             unrestricted: bool = False,
+            non_destructive_node_explosion: bool = False,
     ) -> list[list[str]]:
         start_with = start_with or {}
         if not (nodes := tsort.get_ready()):
@@ -64,8 +65,18 @@ class Executor:
                     output = {node.key: future.wait_and_resolve()}
                 case present:
                     output = {node.key: present}
+            # We can only explode if  requested and the output result is a dict
+            if node._explode and isinstance(output.get(node.key), dict):
+                output = {
+                    # Keep original output if non-destrictive-explode is requested;
+                    # The original key can be overwritten if key collides during explosion.
+                    **(output if non_destructive_node_explosion else {}),
+                    # Explode keys into the output dict
+                    **output[node.key],
+                }
+            # Store output in results
             self.results[run_id][node.name] = {
-                **self.results[run_id].get(node.name, {}),
+                #**self.results[run_id].get(node.name, {}),
                 **output,
             }
             # Mark node as done
@@ -78,9 +89,16 @@ class Executor:
             prev_layer=prev_layer,
             unrestricted=unrestricted,
             start_with={},  # Only availabe during the first layer call
+            non_destructive_node_explosion=non_destructive_node_explosion,
         )
 
-    def execute(self, keep: bool = False, unrestricted: bool = False, start_with: Optional[dict] = None) -> dict:
+    def execute(
+            self,
+            keep: bool = False,
+            unrestricted: bool = False,
+            start_with: Optional[dict] = None,
+            non_destructive_node_explosion: bool = False,
+        ) -> dict:
         from fred.utils.dateops import datetime_utcnow
 
         run_id = str(uuid.uuid4())
@@ -98,6 +116,7 @@ class Executor:
             prev_layer=[[]],
             unrestricted=unrestricted,
             start_with=start_with or {},
+            non_destructive_node_explosion=non_destructive_node_explosion,
         )
         return {
             "run_id": run_id,
