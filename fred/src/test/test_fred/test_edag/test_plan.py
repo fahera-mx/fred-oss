@@ -10,4 +10,3 @@ def test_as_plan():
     plan_from_node = Plan.as_plan(node)
     assert isinstance(plan_from_node, Plan)
     assert plan_from_node.nodes == [node]
-
