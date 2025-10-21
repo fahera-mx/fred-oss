@@ -89,3 +89,32 @@ def test_linear_dag_with_explode():
     edag = Executor.from_plan(plan)
     result = edag.execute(start_with={"n": 3})
     assert result["results"]["sum_items"]["sum_items"] == 3
+
+
+def test_linear_dag_with_iterator_mode():
+
+    @node(inplace=True)
+    def elements(n: int) -> list[int]:
+        return list(range(n))
+
+    @node(inplace=True)
+    def incr(val: int) -> int:
+        return val + 1
+
+    plan = elements[...] >> incr
+    edag = Executor.from_plan(plan)
+    result = edag.execute(start_with={"n": 3})
+    assert result["results"]["incr"]["incr"] == [1, 2, 3]
+
+    @node(inplace=True, alias="res")
+    def duplicate(val: int) -> int:
+        return 2 * val
+
+    @node(inplace=True)
+    def addall(res: list[int]) -> int:
+        return sum(res)
+
+    plan = elements[...] >> incr[...] >> duplicate.with_output(key="res") >> addall
+    edag = Executor.from_plan(plan)
+    result = edag.execute(start_with={"n": 3})
+    assert result["results"]["addall"]["addall"] == 12
