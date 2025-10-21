@@ -35,13 +35,13 @@ class NodeFun:
         bound.apply_defaults()
         # Return the bound arguments as a dictionary
         return {
-            k: v
-            for k, v in bound.arguments.items()
+            "args": bound.args,
+            "kwargs": bound.kwargs,
         }
 
     def __call__(self, *args, **kwargs):
         params = self.validate_parameter_compliance(*args, **kwargs)
-        return self.inner(**params)
+        return self.inner(*params["args"], **params["kwargs"])
     
     def __name__(self):
         return getattr(self.inner, "__name__", "undefined")
@@ -61,7 +61,8 @@ class Node(ComponentInterface):
     # TODO: let's make the 'params' a frozenset (i.e., frozenparams) instead of a dict to ensure immutability
     params: dict = field(default_factory=dict)
     nid: str = field(default_factory=lambda: str(uuid.uuid4()))
-    inplace: bool = False
+    _inplace: bool = False
+    _explode: bool = False  # Whether this node's output should be exploded when used as input to another node
 
     def __hash__(self):
         obj = asdict(self)
@@ -70,13 +71,29 @@ class Node(ComponentInterface):
         return hash(frozenset(obj.items()))
 
     def clone(self, **kwargs) -> "Node":
-        return Node(
+        # Verify if 'inplace' is set via '_inplace' or 'inplace' keys; otherwise, keep current value
+        for key in ("inplace", "_inplace"):
+            value = kwargs.pop(key, None)
+            if isinstance(value, bool):
+                kwargs["_inplace"] = value
+                break
+        else:
+            kwargs["_inplace"] = self._inplace
+        # Verify if 'explode' is set via '_explode' or 'explode' keys; otherwise, keep current value
+        for key in ("explode", "_explode"):
+            value = kwargs.pop(key, None)
+            if isinstance(value, bool):
+                kwargs["_explode"] = value
+                break
+        else:
+            kwargs["_explode"] = self._explode
+        # Create a new Node with updated attributes
+        return self.__class__(
             **{
                 "name": self.name,
                 "key": self.key,
                 "nfun": self.nfun,
                 "params": self.params,
-                "inplace": self.inplace,
                 **kwargs,
             },
             nid=str(uuid.uuid4()),  # Must have a new ID
@@ -96,13 +113,28 @@ class Node(ComponentInterface):
             name=name,
             key=key or name,
             nfun=NodeFun.auto(function=function),
-            inplace=inplace,
+            _inplace=inplace,
             params=params,
         )
 
     @property
     def fun(self) -> Callable:
         return self.nfun
+
+    def inplace(self) -> "Node":
+        return self.clone(_inplace=True)
+    
+    def explode(self) -> "Node":
+        return self.clone(_explode=True)
+
+    @property
+    def E(self) -> "Node":
+        # Shortcut to set explode=True
+        return self.explode()
+
+    def __invert__(self) -> "Node":
+        # Unary ~ operator to set explode=True
+        return self.explode()
 
     def with_output(self, key: str) -> "Node":
         return self.with_alias(alias=self.name, key=key, keep_key=False)
@@ -113,7 +145,8 @@ class Node(ComponentInterface):
             key=key or (self.key if keep_key else alias),
             nfun=self.nfun,
             params=self.params,
-            inplace=self.inplace,
+            _inplace=self._inplace,
+            _explode=self._explode,
         )
 
     def with_params(self, update_key: Optional[str] = None, **params) -> "Node":
@@ -125,7 +158,8 @@ class Node(ComponentInterface):
                 **self.params,
                 **params,
             },
-            inplace=self.inplace,
+            _inplace=self._inplace,
+            _explode=self._explode,
         )
 
     def execute(self, **kwargs):
@@ -133,7 +167,7 @@ class Node(ComponentInterface):
             **self.params,
             **kwargs
         }
-        if self.inplace:
+        if self._inplace:
             return self.fun(**params)
         from fred.future.impl import Future
         return Future(self.fun, **params)
