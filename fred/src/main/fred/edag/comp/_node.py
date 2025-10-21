@@ -117,6 +117,7 @@ class Node(ComponentInterface):
             cls,
             function: Callable,
             inplace: bool = False,
+            explode: bool = False,
             fname: Optional[str] = None,
             name: Optional[str] = None,
             key: Optional[str] = None,
@@ -128,6 +129,7 @@ class Node(ComponentInterface):
             key=key or name,
             nfun=NodeFun.auto(function=function, name=fname),
             _inplace=inplace,
+            _explode=explode,
             params=params,
         )
 
