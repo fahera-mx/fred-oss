@@ -178,12 +178,12 @@ class Node(ComponentInterface):
             _explode=self._explode,
         )
 
-    def execute(self, **kwargs):
+    def execute(self, *args, **kwargs):
         params = {
             **self.params,
             **kwargs
         }
         if self._inplace:
-            return self.fun(**params)
+            return self.fun(*args, **params)
         from fred.future.impl import Future
         return Future(self.fun, **params)
