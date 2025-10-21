@@ -4,8 +4,12 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from fred.future.impl import Future
+from fred.settings import logger_manager
 from fred.edag.comp.catalog import CompCatalog
 from fred.edag.plan import Plan
+
+
+logger = logger_manager.get_logger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,8 +61,21 @@ class Executor:
                     for arg, val in node_out.items()
                 }
             }
+            # Handle iterator mode; if '*' is provided in kwargs, execute node for each item in the iterator
+            # and collect results in a list.
+            # We should 'pop' to simulate 'consuming' the iterator input and avoid passing it to other nodes.
+            if (iterator := kwargs.pop("*", None)):
+                logger.debug(f"Executor mapping functionality detected: Node '{node.name}' executing in iterator mode.")
+                # TODO: https://github.com/fahera-mx/fred-oss/issues/179
+                # TODO: Can we consider exploiting the item components?
+                node_output = [
+                    node.execute(item)
+                    for item in iterator
+                ]
+            else:
+                node_output = node.execute(**kwargs)
             # Execute node function
-            match node.execute(**kwargs):
+            match node_output:
                 case Future() as future:
                     # Can't we just build the whole graph in the future and 'wait_and_resolve' only at the end?
                     # Or at least per layer/generation?

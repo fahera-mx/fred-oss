@@ -3,7 +3,10 @@ from inspect import Signature, signature, Parameter
 from dataclasses import dataclass, field, asdict
 from typing import Callable, Optional
 
+from fred.settings import logger_manager
 from fred.edag.comp.interface import ComponentInterface
+
+logger = logger_manager.get_logger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +76,12 @@ class Node(ComponentInterface):
         obj["nfun"] = self.nfun.__hash__()
         obj["params"] = frozenset((obj.get("params") or {}).keys())  # only hash keys to avoid unhashable values
         return hash(frozenset(obj.items()))
+
+    def __getitem__(self, key) -> "Node":
+        if key is Ellipsis:  # node[...] syntax
+            return self.clone(key="*")
+        logger.warning("Node indexing is reserved for syntax like node[...] to indicate iterator mode.")
+        raise KeyError(f"Node does not support indexing with key: {key}")
 
     def clone(self, **kwargs) -> "Node":
         # Verify if 'inplace' is set via '_inplace' or 'inplace' keys; otherwise, keep current value
@@ -178,12 +187,12 @@ class Node(ComponentInterface):
             _explode=self._explode,
         )
 
-    def execute(self, **kwargs):
+    def execute(self, *args, **kwargs):
         params = {
             **self.params,
             **kwargs
         }
         if self._inplace:
-            return self.fun(**params)
+            return self.fun(*args, **params)
         from fred.future.impl import Future
         return Future(self.fun, **params)
