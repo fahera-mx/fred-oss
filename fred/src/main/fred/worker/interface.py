@@ -168,7 +168,7 @@ class HandlerInterface:
             logger.info(f"Worker future-broadcast flag set to: {bflag}")
             return Future(
                 future_id=future_id,
-                function=lambda: self.run(event=event, as_future=False),
+                function=lambda: self.run(event=event, as_future=False, future_id=future_id),
                 broadcast=bflag,
             )
         # Extract payload and event ID
@@ -189,6 +189,10 @@ class HandlerInterface:
                 default="0"
             )
         ))
+        # Callaback stuff
+        callback_url = payload.pop("callback_url", None)
+        callback_headers = payload.pop("callback_headers", {})
+        # Run actions!
         match (worker_action := payload.pop("fred_worker_action", "handler")):
             case "telemetry":
                 # Collect and return telemetry data
@@ -244,12 +248,31 @@ class HandlerInterface:
                 response = {
                     "error": "Invalid fred_worker_action type."
                 }
-        return {
+        output = {
             "ok": ok,
             "id": job_event_identifier,
             "started_at": started_at,
             "duration": time.perf_counter() - start_time,
             "worker_action": worker_action,
             "response": response,
+            "triggered_by_event": event,
+            "callback_url": callback_url,
+            "predefined_future_id": future_id,
             "metadata": self.metadata_prepared,
         }
+        if callback_url:
+            import requests
+            try:
+                callback_response = requests.post(
+                    callback_url,
+                    json=output,
+                    headers=callback_headers,
+                )
+                output["callback_response_status"] = callback_response.status_code
+                output["callback_response_raw"] = callback_response.text
+                callback_response.raise_for_status()
+                logger.info(f"Successfully sent runner output to callback URL: {callback_url}")
+            except requests.RequestException as e:
+                output["callback_error"] = str(e)
+                logger.error(f"Failed to send runner output to callback URL '{callback_url}': {e}")
+        return output
